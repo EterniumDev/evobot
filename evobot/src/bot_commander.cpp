@@ -2957,7 +2957,9 @@ void QueueHeavyArmourLoadout(bot_t* CommanderBot, const Vector Area, int Priorit
 
 	if (!PlayerHasSpecialWeapon(MarineNeedingLoadout))
 	{
-		NSWeapon SpecialWeapon = (UTIL_GetNumWeaponsOfTypeInPlay(WEAPON_MARINE_GL) == 0) ? WEAPON_MARINE_GL : WEAPON_MARINE_HMG;
+		//disable Grenade launchers since bots teamkill too much with it
+		//NSWeapon SpecialWeapon = (UTIL_GetNumWeaponsOfTypeInPlay(WEAPON_MARINE_GL) == 0) ? WEAPON_MARINE_GL : WEAPON_MARINE_HMG;
+		NSWeapon SpecialWeapon = WEAPON_MARINE_HMG;
 
 		NSDeployableItem SpecialWeaponItemType = UTIL_WeaponTypeToDeployableItem(SpecialWeapon);
 
