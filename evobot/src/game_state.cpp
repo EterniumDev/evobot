@@ -987,7 +987,7 @@ void EvoBot_ServerCommand(void)
 		}
 	}
 
-	if (FStrEq(arg1, "commandermode"))
+	if (FStrEq(arg1, "commandermode") || FStrEq(arg1, "com"))
 	{
 		const char* CommMode = CMD_ARGV(2);
 

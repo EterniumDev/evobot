@@ -462,7 +462,7 @@ void MarineSetSecondaryTask(bot_t* pBot, bot_task* Task)
 
 	edict_t* UnbuiltStructure = UTIL_FindClosestMarineStructureUnbuiltWithoutBuilders(pBot, 2, pBot->pEdict->v.origin, UTIL_MetresToGoldSrcUnits(30.0f), true);
 
-	if (!FNullEnt(UnbuiltStructure))
+	if (!FNullEnt(UnbuiltStructure) && !UTIL_StructureIsRecycling(UnbuiltStructure))
 	{
 		TASK_SetBuildTask(pBot, Task, UnbuiltStructure, true);
 		return;
@@ -562,7 +562,7 @@ void MarineSweeperSetSecondaryTask(bot_t* pBot, bot_task* Task)
 
 	edict_t* UnbuiltStructure = UTIL_FindClosestMarineStructureUnbuilt(pBot->pEdict->v.origin, UTIL_MetresToGoldSrcUnits(30.0f), true);
 
-	if (!FNullEnt(UnbuiltStructure))
+	if (!FNullEnt(UnbuiltStructure) && !UTIL_StructureIsRecycling(UnbuiltStructure))
 	{
 		TASK_SetBuildTask(pBot, Task, UnbuiltStructure, true);
 		return;
@@ -604,7 +604,7 @@ void MarineCapperSetSecondaryTask(bot_t* pBot, bot_task* Task)
 
 	edict_t* UnbuiltStructure = UTIL_FindClosestMarineStructureUnbuilt(pBot->pEdict->v.origin, UTIL_MetresToGoldSrcUnits(10.0f), false);
 
-	if (!FNullEnt(UnbuiltStructure))
+	if (!FNullEnt(UnbuiltStructure) && !UTIL_StructureIsRecycling(UnbuiltStructure))
 	{
 		float Dist = vDist2D(pBot->pEdict->v.origin, UnbuiltStructure->v.origin) - 1.0f;
 
@@ -659,7 +659,7 @@ void MarineAssaultSetSecondaryTask(bot_t* pBot, bot_task* Task)
 
 	edict_t* UnbuiltStructure = UTIL_FindClosestMarineStructureUnbuilt(pBot->pEdict->v.origin, UTIL_MetresToGoldSrcUnits(10.0f), false);
 
-	if (!FNullEnt(UnbuiltStructure))
+	if (!FNullEnt(UnbuiltStructure) && !UTIL_StructureIsRecycling(UnbuiltStructure))
 	{
 		float Dist = vDist2D(pBot->pEdict->v.origin, UnbuiltStructure->v.origin) - 1.0f;
 
