@@ -657,6 +657,16 @@ void CommanderReceiveHealthRequest(bot_t* pBot, edict_t* Requestor)
 	}
 }
 
+void CommanderReceiveCatalystRequest(bot_t* pBot, edict_t* Requestor)
+{
+	if (!Requestor) { return; }
+
+	for (int i = 0; i < 3; i++)
+	{
+		CommanderQueueItemDrop(pBot, ITEM_MARINE_CATALYSTS, ZERO_VECTOR, Requestor, 0);
+	}
+}
+
 void CommanderReceiveAmmoRequest(bot_t* pBot, edict_t* Requestor)
 {
 	if (!Requestor) { return; }
@@ -2578,6 +2588,11 @@ void CommanderQueueNextAction(bot_t* pBot)
 		CommanderQueueResearch(pBot, RESEARCH_PROTOTYPELAB_HEAVYARMOUR, CurrentPriority);
 	}
 
+	if (UTIL_MarineResearchIsAvailable(RESEARCH_ARMSLAB_CATALYSTS) && !UTIL_ResearchIsAlreadyQueued(pBot, RESEARCH_ARMSLAB_CATALYSTS))
+	{
+		CommanderQueueResearch(pBot, RESEARCH_ARMSLAB_CATALYSTS, CurrentPriority);
+	}
+
 	/* Next: Drop heavy armour loadouts */
 
 	CurrentPriority = 8;
@@ -3206,6 +3221,8 @@ bool UTIL_ItemCanBeDeployed(NSDeployableItem ItemToDeploy)
 		return UTIL_ResearchIsComplete(RESEARCH_PROTOTYPELAB_JETPACKS);
 	case ITEM_MARINE_SCAN:
 		return UTIL_ObservatoryResearchIsAvailable(RESEARCH_OBSERVATORY_SCAN);
+	case ITEM_MARINE_CATALYSTS:
+		return UTIL_ResearchIsComplete(RESEARCH_ARMSLAB_CATALYSTS);
 	default:
 		return false;
 	}

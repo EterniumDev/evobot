@@ -3705,7 +3705,7 @@ bool UTIL_BaseIsInDistress()
 
 	float MarineRatio = ((float)NumDefenders / (float)(NumMarines - 1));
 
-	if (MarineRatio >= 0.3f) { return false; }
+	if (MarineRatio >= 0.25f) { return false; }
 
 	int NumInfantryPortals = UTIL_GetNumBuiltStructuresOfType(STRUCTURE_MARINE_INFANTRYPORTAL);
 

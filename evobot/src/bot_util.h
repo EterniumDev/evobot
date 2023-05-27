@@ -76,6 +76,7 @@ void BotTakeDamage(bot_t* pBot, int damageTaken, edict_t* aggressor);
 void BotDied(bot_t* pBot, edict_t* killer);
 void BotKilledPlayer(bot_t* pBot, edict_t* victim);
 
+bot_t* GetBotPointerThirdParty(const edict_t* pEdict);
 bot_t* GetBotPointer(const edict_t* pEdict);
 int GetBotIndex(edict_t* pEdict);
 

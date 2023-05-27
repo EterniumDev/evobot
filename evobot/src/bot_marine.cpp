@@ -1559,11 +1559,6 @@ CombatModeMarineUpgrade MarineGetNextCombatUpgrade(bot_t* pBot)
 			return COMBAT_MARINE_UPGRADE_WELDER;
 		}
 
-		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_ARMOUR1))
-		{
-			return COMBAT_MARINE_UPGRADE_ARMOUR1;
-		}
-
 		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_DAMAGE1))
 		{
 			return COMBAT_MARINE_UPGRADE_DAMAGE1;
@@ -1574,9 +1569,9 @@ CombatModeMarineUpgrade MarineGetNextCombatUpgrade(bot_t* pBot)
 			return COMBAT_MARINE_UPGRADE_SHOTGUN;
 		}
 
-		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_DAMAGE2))
+		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_ARMOUR1))
 		{
-			return COMBAT_MARINE_UPGRADE_DAMAGE2;
+			return COMBAT_MARINE_UPGRADE_ARMOUR1;
 		}
 
 		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_ARMOUR2))
@@ -1589,19 +1584,39 @@ CombatModeMarineUpgrade MarineGetNextCombatUpgrade(bot_t* pBot)
 			return COMBAT_MARINE_UPGRADE_HEAVYARMOUR;
 		}
 
-		if (randbool())
+		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_DAMAGE2))
+		{
+			return COMBAT_MARINE_UPGRADE_DAMAGE2;
+		}
+
+		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_ARMOUR3))
 		{
 			return COMBAT_MARINE_UPGRADE_ARMOUR3;
 		}
-		else
+
+		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_DAMAGE3))
 		{
 			return COMBAT_MARINE_UPGRADE_DAMAGE3;
 		}
 
+		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_CATALYST))
+		{
+			return COMBAT_MARINE_UPGRADE_CATALYST;
+		}
+
+		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_MOTIONTRACKING))
+		{
+			return COMBAT_MARINE_UPGRADE_MOTIONTRACKING;
+		}
 	}
 
 	if (pBot->CurrentRole == BOT_ROLE_ASSAULT)
 	{
+		//aggressive bots should take resupply to help sustain themselves
+		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_RESUPPLY))
+		{
+			return COMBAT_MARINE_UPGRADE_RESUPPLY;
+		}
 
 		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_ARMOUR1))
 		{
@@ -1641,6 +1656,31 @@ CombatModeMarineUpgrade MarineGetNextCombatUpgrade(bot_t* pBot)
 		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_HEAVYARMOUR))
 		{
 			return COMBAT_MARINE_UPGRADE_HEAVYARMOUR;
+		}
+
+		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_ARMOUR3))
+		{
+			return COMBAT_MARINE_UPGRADE_ARMOUR3;
+		}
+
+		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_DAMAGE3))
+		{
+			return COMBAT_MARINE_UPGRADE_DAMAGE3;
+		}
+
+		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_CATALYST))
+		{
+			return COMBAT_MARINE_UPGRADE_CATALYST;
+		}
+
+		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_MOTIONTRACKING))
+		{
+			return COMBAT_MARINE_UPGRADE_MOTIONTRACKING;
+		}
+
+		if (!PlayerHasWeapon(pBot->pEdict, WEAPON_MARINE_WELDER))
+		{
+			return COMBAT_MARINE_UPGRADE_WELDER;
 		}
 
 	}

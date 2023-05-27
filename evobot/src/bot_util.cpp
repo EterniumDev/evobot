@@ -372,6 +372,23 @@ void BotKilledPlayer(bot_t* pBot, edict_t* victim)
 
 }
 
+bot_t* GetBotPointerThirdParty(const edict_t* pEdict)
+{
+	// If we aren't flagged as a fake client, then we can't be a bot
+	//apparently third party bot flag also not in use?
+	//if (!(pEdict->v.flags & FL_THIRDPARTYBOT)) { return nullptr; }
+
+	for (int index = 0; index < MAX_CLIENTS; index++)
+	{
+		if (bots[index].is_used && bots[index].pEdict == pEdict)
+		{
+			return &bots[index];
+		}
+	}
+
+	return nullptr;  // return NULL if edict is not a bot
+}
+
 bot_t* GetBotPointer(const edict_t* pEdict)
 {
 	// If we aren't flagged as a fake client, then we can't be a bot

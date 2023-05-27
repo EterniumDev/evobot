@@ -42,6 +42,7 @@ int UTIL_CommanderFirstFreeActionIndex(bot_t* CommanderBot, int Priority);
 
 void CommanderReceiveAlert(bot_t* pBot, const Vector Location, const PlayerAlertType AlertType);
 void CommanderReceiveHealthRequest(bot_t* pBot, edict_t* Requestor);
+void CommanderReceiveCatalystRequest(bot_t* pBot, edict_t* Requestor);
 void CommanderReceiveAmmoRequest(bot_t* pBot, edict_t* Requestor);
 void CommanderReceiveOrderRequest(bot_t* pBot, edict_t* Requestor);
 void CommanderReceiveBaseAttackAlert(bot_t* pBot, const Vector Location);
