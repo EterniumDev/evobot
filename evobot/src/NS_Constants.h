@@ -225,7 +225,8 @@ enum NSGameMode
 	GAME_MODE_REGULAR = 1,	// Regular NS game mode
 	GAME_MODE_COMBAT = 2,	// Combat game mode
 	GAME_MODE_MVM = 3,		// Marine vs Marine mode
-	GAME_MODE_AVA = 4		// Alien vs Alien mode
+	GAME_MODE_AVA = 4,		// Alien vs Alien mode
+	GAME_MODE_FADED = 5		// Faded custom gamemode
 };
 
 // All iuser3 values to denote entity classification (e.g. player class, or building type)

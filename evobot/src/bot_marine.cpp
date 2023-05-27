@@ -1455,7 +1455,7 @@ BotRole MarineGetBestBotRole(const bot_t* pBot)
 
 	CommanderMode BotCommanderMode = CONFIG_GetCommanderMode();
 
-	if (BotCommanderMode != COMMANDERMODE_NEVER)
+	if (BotCommanderMode != COMMANDERMODE_NEVER && GAME_GetGameMode() != GAME_MODE_FADED)
 	{
 		if (!UTIL_IsThereACommander())
 		{
@@ -1481,7 +1481,7 @@ BotRole MarineGetBestBotRole(const bot_t* pBot)
 	int NumDefenders = GAME_GetBotsWithRoleType(BOT_ROLE_SWEEPER, MARINE_TEAM, pBot->pEdict);
 
 	// One marine to play sweeper at all times
-	if (NumDefenders < 1)
+	if (NumDefenders < 1 && GAME_GetGameMode() != GAME_MODE_FADED)
 	{
 		return BOT_ROLE_SWEEPER;
 	}

@@ -1472,6 +1472,14 @@ void BotThink(bot_t* pBot)
 			{
 				RegularModeThink(pBot);
 			}
+			else if (CurrentGameMode == GAME_MODE_MVM)
+			{
+				RegularModeThink(pBot);
+			}
+			else if (CurrentGameMode == GAME_MODE_FADED)
+			{
+				FadedModeThink(pBot);
+			}
 			else if (CurrentGameMode == GAME_MODE_COMBAT)
 			{
 				CombatModeThink(pBot);
@@ -1507,6 +1515,25 @@ void RegularModeThink(bot_t* pBot)
 
 	pBot->CurrentEnemy = BotGetNextEnemyTarget(pBot);
 	
+	if (pBot->CurrentEnemy > -1)
+	{
+		pBot->LastCombatTime = gpGlobals->time;
+	}
+
+	if (IsPlayerMarine(pBot->pEdict))
+	{
+		MarineThink(pBot);
+	}
+	else
+	{
+		AlienThink(pBot);
+	}
+}
+
+void FadedModeThink(bot_t* pBot)
+{
+	pBot->CurrentEnemy = BotGetNextEnemyTarget(pBot);
+
 	if (pBot->CurrentEnemy > -1)
 	{
 		pBot->LastCombatTime = gpGlobals->time;

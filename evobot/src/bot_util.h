@@ -118,6 +118,8 @@ void BotThink(bot_t* pBot);
 
 // Called during the regular NS game mode
 void RegularModeThink(bot_t* pBot);
+// Called during the faded custom game mode
+void FadedModeThink(bot_t* pBot);
 // Called during the combat game mode
 void CombatModeThink(bot_t* pBot);
 // Called if there isn't a valid game mode in play (e.g. user has loaded non-NS map). Bots will randomly roam and attack enemies but nothing else
