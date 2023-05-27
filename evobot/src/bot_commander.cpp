@@ -2359,8 +2359,14 @@ void CommanderQueueNextAction(bot_t* pBot)
 
 	int NumPlacedOrQueuedPortals = UTIL_GetNumPlacedOrQueuedStructuresOfType(pBot, STRUCTURE_MARINE_INFANTRYPORTAL);
 
+	int PortalsNeeded = 2;
+
+	int NumMarines = GAME_GetNumPlayersOnTeam(MARINE_TEAM);
+
+	PortalsNeeded = __max(PortalsNeeded, floorf(((float)NumMarines-1.0f)/2.0f));
+
 	// Only queue up one infantry portal at a time so the second one can be built next to the first rather than randomly scattered
-	if (NumPlacedOrQueuedPortals < 2 && UTIL_GetQueuedBuildRequestsOfType(pBot, STRUCTURE_MARINE_INFANTRYPORTAL) == 0)
+	if (NumPlacedOrQueuedPortals < PortalsNeeded && UTIL_GetQueuedBuildRequestsOfType(pBot, STRUCTURE_MARINE_INFANTRYPORTAL) == 0)
 	{
 		CommanderQueueInfantryPortalBuild(pBot, CurrentPriority);
 	}
