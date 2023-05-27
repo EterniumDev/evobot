@@ -83,6 +83,7 @@ void pfnMessageBegin(int msg_dest, int msg_type, const float* pOrigin, edict_t* 
 {
 	if (gpGlobals->deathmatch)
 	{
+
 		int index = -1;
 
 		botMsgFunction = NULL;     // no msg function until known otherwise

@@ -45,6 +45,14 @@ std::unordered_map<int, buildable_structure> AlienBuildableStructureMap;
 
 std::unordered_map<int, dropped_marine_item> MarineDroppedItemMap;
 
+float last_structure_refresh_time = 0.0f;
+float last_item_refresh_time = 0.0f;
+
+// Increments by 1 every time the structure list is refreshed. Used to detect if structures have been destroyed and no longer show up
+int StructureRefreshFrame = 0;
+// Increments by 1 every time the item list is refreshed. Used to detect if items have been removed from play and no longer show up
+int ItemRefreshFrame = 0;
+
 
 
 void PopulateEmptyHiveList()
@@ -195,7 +203,7 @@ void SetHiveUnderAttack(int HiveIndex, bool bNewUnderAttack)
 	Hives[HiveIndex].bIsUnderAttack = bNewUnderAttack;
 }
 
-void SetHiveHealthPercent(int HiveIndex, float NewHealthPercent)
+void SetHiveHealthPercent(int HiveIndex, int NewHealthPercent)
 {
 	Hives[HiveIndex].HealthPercent = NewHealthPercent;
 }
@@ -512,6 +520,8 @@ void PrintHiveInfo()
 
 void UTIL_RefreshBuildableStructures()
 {
+	if (!NavmeshLoaded()) { return; }
+
 	edict_t* currStructure = NULL;
 
 	// Marine Structures
@@ -1259,7 +1269,7 @@ edict_t* UTIL_GetFirstPlacedStructureOfType(const NSStructureType StructureType)
 	{
 		for (auto& it : MarineBuildableStructureMap)
 		{
-			if (!it.second.bOnNavmesh) { continue; }
+			if (!it.second.bOnNavmesh || !it.second.bIsReachableAlien) { continue; }
 			if (UTIL_StructureTypesMatch(StructureType, it.second.StructureType)) { return it.second.edict; }
 		}
 	}
@@ -1267,7 +1277,7 @@ edict_t* UTIL_GetFirstPlacedStructureOfType(const NSStructureType StructureType)
 	{
 		for (auto& it : AlienBuildableStructureMap)
 		{
-			if (!it.second.bOnNavmesh) { continue; }
+			if (!it.second.bOnNavmesh || !it.second.bIsReachableAlien) { continue; }
 			if (UTIL_StructureTypesMatch(StructureType, it.second.StructureType)) { return it.second.edict; }
 
 		}
@@ -1705,6 +1715,9 @@ void UTIL_ClearMapAIData()
 
 	StructureRefreshFrame = 0;
 	ItemRefreshFrame = 0;
+
+	last_structure_refresh_time = 0.0f;
+	last_item_refresh_time = 0.0f;
 }
 
 const resource_node* UTIL_FindEligibleResNodeClosestToLocation(const Vector& Location, const int Team, bool bIgnoreElectrified)
@@ -2098,7 +2111,7 @@ edict_t* UTIL_GetNearestStructureOfTypeInLocation(const NSStructureType Structur
 
 		for (auto& it : MarineBuildableStructureMap)
 		{
-			if (!it.second.bOnNavmesh) { continue; }
+			if (!it.second.bOnNavmesh || !it.second.bIsReachableAlien) { continue; }
 			if (!UTIL_StructureTypesMatch(StructureType, it.second.StructureType) || (!bAllowElectrified && it.second.bIsElectrified)) { continue; }
 
 			float ThisDist = (bUsePhaseDistance) ? UTIL_GetPhaseDistanceBetweenPointsSq(it.second.Location, Location) : vDist2DSq(it.second.Location, Location);
@@ -2116,7 +2129,7 @@ edict_t* UTIL_GetNearestStructureOfTypeInLocation(const NSStructureType Structur
 	{
 		for (auto& it : AlienBuildableStructureMap)
 		{
-			if (!it.second.bOnNavmesh) { continue; }
+			if (!it.second.bOnNavmesh || !it.second.bIsReachableAlien) { continue; }
 			if (!UTIL_StructureTypesMatch(StructureType, it.second.StructureType)) { continue; }
 
 			float ThisDist = (bUsePhaseDistance) ? UTIL_GetPhaseDistanceBetweenPointsSq(it.second.Location, Location) : vDist2DSq(it.second.Location, Location);
@@ -2560,7 +2573,7 @@ edict_t* UTIL_GetNearestStructureIndexOfType(const Vector& Location, NSStructure
 	{
 		for (auto& it : MarineBuildableStructureMap)
 		{
-			if (!it.second.bOnNavmesh) { continue; }
+			if (!it.second.bOnNavmesh || !it.second.bIsReachableAlien) { continue; }
 			if (!UTIL_StructureTypesMatch(StructureType, it.second.StructureType)) { continue; }
 			if (bFullyConstructedOnly && !it.second.bFullyConstructed) { continue; }
 
@@ -2577,7 +2590,7 @@ edict_t* UTIL_GetNearestStructureIndexOfType(const Vector& Location, NSStructure
 	{
 		for (auto& it : AlienBuildableStructureMap)
 		{
-			if (!it.second.bOnNavmesh) { continue; }
+			if (!it.second.bOnNavmesh || !it.second.bIsReachableAlien) { continue; }
 			if (!UTIL_StructureTypesMatch(StructureType, it.second.StructureType)) { continue; }
 			if (bFullyConstructedOnly && !it.second.bFullyConstructed) { continue; }
 
@@ -2670,7 +2683,8 @@ edict_t* UTIL_FindClosestMarineStructureToLocation(const Vector& Location, const
 
 	for (auto& it : MarineBuildableStructureMap)
 	{
-		if (!it.second.bOnNavmesh) { continue; }
+
+		if (!it.second.bOnNavmesh || !it.second.bIsReachableMarine) { continue; }
 		if (!bAllowElectrified && it.second.bIsElectrified) { continue; }
 
 		float thisDist = vDist2DSq(Location, it.second.Location);
@@ -2712,7 +2726,7 @@ edict_t* UTIL_FindClosestMarineStructureOfTypeUnbuilt(const NSStructureType Stru
 
 	for (auto& it : MarineBuildableStructureMap)
 	{
-		if (!it.second.bOnNavmesh) { continue; }
+		if (!it.second.bOnNavmesh || !it.second.bIsReachableAlien) { continue; }
 		if (it.second.bFullyConstructed) { continue; }
 		if (!UTIL_StructureTypesMatch(StructureType, it.second.StructureType)) { continue; }
 
@@ -2737,7 +2751,7 @@ edict_t* UTIL_FindClosestMarineStructureUnbuilt(const Vector& SearchLocation, fl
 
 	for (auto& it : MarineBuildableStructureMap)
 	{
-		if (!it.second.bOnNavmesh) { continue; }
+		if (!it.second.bOnNavmesh || !it.second.bIsReachableAlien) { continue; }
 		if (it.second.bFullyConstructed) { continue; }
 
 		float thisDist = (bUsePhaseDistance) ? UTIL_GetPhaseDistanceBetweenPointsSq(SearchLocation, it.second.Location) : vDist2DSq(SearchLocation, it.second.Location);
@@ -2802,7 +2816,7 @@ edict_t* UTIL_FindClosestDamagedStructure(const Vector& SearchLocation, const in
 	{
 		for (auto& it : MarineBuildableStructureMap)
 		{
-			if (!it.second.bOnNavmesh) { continue; }
+			if (!it.second.bOnNavmesh || !it.second.bIsReachableAlien) { continue; }
 
 			if (!it.second.bFullyConstructed) { continue; }
 
@@ -2821,7 +2835,7 @@ edict_t* UTIL_FindClosestDamagedStructure(const Vector& SearchLocation, const in
 	{
 		for (auto& it : AlienBuildableStructureMap)
 		{
-			if (!it.second.bOnNavmesh) { continue; }
+			if (!it.second.bOnNavmesh || !it.second.bIsReachableAlien) { continue; }
 
 			if (!it.second.bFullyConstructed) { continue; }
 
@@ -2881,68 +2895,70 @@ int UTIL_GetNumUnbuiltHives()
 
 void UTIL_RefreshMarineItems()
 {
+	if (!NavmeshLoaded()) { return; }
+
 	edict_t* currItem = NULL;
-	while (((currItem = UTIL_FindEntityByClassname(currItem, "item_health")) != NULL) && (!FNullEnt(currItem)) && !(currItem->v.effects & EF_NODRAW))
+	while (((currItem = UTIL_FindEntityByClassname(currItem, "item_health")) != NULL) && (!FNullEnt(currItem)))
 	{
 		UTIL_UpdateMarineItem(currItem, ITEM_MARINE_HEALTHPACK);
 	}
 
 	currItem = NULL;
-	while (((currItem = UTIL_FindEntityByClassname(currItem, "item_genericammo")) != NULL) && (!FNullEnt(currItem)) && !(currItem->v.effects & EF_NODRAW))
+	while (((currItem = UTIL_FindEntityByClassname(currItem, "item_genericammo")) != NULL) && (!FNullEnt(currItem)))
 	{
 		UTIL_UpdateMarineItem(currItem, ITEM_MARINE_AMMO);
 	}
 
 	currItem = NULL;
-	while (((currItem = UTIL_FindEntityByClassname(currItem, "item_heavyarmor")) != NULL) && (!FNullEnt(currItem)) && !(currItem->v.effects & EF_NODRAW))
+	while (((currItem = UTIL_FindEntityByClassname(currItem, "item_heavyarmor")) != NULL) && (!FNullEnt(currItem)))
 	{
 		UTIL_UpdateMarineItem(currItem, ITEM_MARINE_HEAVYARMOUR);
 	}
 
 	currItem = NULL;
-	while (((currItem = UTIL_FindEntityByClassname(currItem, "item_jetpack")) != NULL) && (!FNullEnt(currItem)) && !(currItem->v.effects & EF_NODRAW))
+	while (((currItem = UTIL_FindEntityByClassname(currItem, "item_jetpack")) != NULL) && (!FNullEnt(currItem)))
 	{
 		UTIL_UpdateMarineItem(currItem, ITEM_MARINE_JETPACK);
 	}
 
 	currItem = NULL;
-	while (((currItem = UTIL_FindEntityByClassname(currItem, "item_catalyst")) != NULL) && (!FNullEnt(currItem)) && !(currItem->v.effects & EF_NODRAW))
+	while (((currItem = UTIL_FindEntityByClassname(currItem, "item_catalyst")) != NULL) && (!FNullEnt(currItem)))
 	{
 		UTIL_UpdateMarineItem(currItem, ITEM_MARINE_CATALYSTS);
 	}
 
 	currItem = NULL;
-	while (((currItem = UTIL_FindEntityByClassname(currItem, "weapon_mine")) != NULL) && (!FNullEnt(currItem)) && !(currItem->v.effects & EF_NODRAW))
+	while (((currItem = UTIL_FindEntityByClassname(currItem, "weapon_mine")) != NULL) && (!FNullEnt(currItem)))
 	{
 		UTIL_UpdateMarineItem(currItem, ITEM_MARINE_MINES);
 	}
 
 	currItem = NULL;
-	while (((currItem = UTIL_FindEntityByClassname(currItem, "weapon_shotgun")) != NULL) && (!FNullEnt(currItem)) && !(currItem->v.effects & EF_NODRAW))
+	while (((currItem = UTIL_FindEntityByClassname(currItem, "weapon_shotgun")) != NULL) && (!FNullEnt(currItem)))
 	{
 		UTIL_UpdateMarineItem(currItem, ITEM_MARINE_SHOTGUN);
 	}
 
 	currItem = NULL;
-	while (((currItem = UTIL_FindEntityByClassname(currItem, "weapon_heavymachinegun")) != NULL) && (!FNullEnt(currItem)) && !(currItem->v.effects & EF_NODRAW))
+	while (((currItem = UTIL_FindEntityByClassname(currItem, "weapon_heavymachinegun")) != NULL) && (!FNullEnt(currItem)))
 	{
 		UTIL_UpdateMarineItem(currItem, ITEM_MARINE_HMG);
 	}
 
 	currItem = NULL;
-	while (((currItem = UTIL_FindEntityByClassname(currItem, "weapon_grenadegun")) != NULL) && (!FNullEnt(currItem)) && !(currItem->v.effects & EF_NODRAW))
+	while (((currItem = UTIL_FindEntityByClassname(currItem, "weapon_grenadegun")) != NULL) && (!FNullEnt(currItem)))
 	{
 		UTIL_UpdateMarineItem(currItem, ITEM_MARINE_GRENADELAUNCHER);
 	}
 
 	currItem = NULL;
-	while (((currItem = UTIL_FindEntityByClassname(currItem, "weapon_welder")) != NULL) && (!FNullEnt(currItem)) && !(currItem->v.effects & EF_NODRAW))
+	while (((currItem = UTIL_FindEntityByClassname(currItem, "weapon_welder")) != NULL) && (!FNullEnt(currItem)))
 	{
 		UTIL_UpdateMarineItem(currItem, ITEM_MARINE_WELDER);
 	}
 
 	currItem = NULL;
-	while (((currItem = UTIL_FindEntityByClassname(currItem, "scan")) != NULL) && (!FNullEnt(currItem)) && !(currItem->v.effects & EF_NODRAW))
+	while (((currItem = UTIL_FindEntityByClassname(currItem, "scan")) != NULL) && (!FNullEnt(currItem)))
 	{
 		UTIL_UpdateMarineItem(currItem, ITEM_MARINE_SCAN);
 	}
@@ -3065,6 +3081,10 @@ void UTIL_UpdateMarineItem(edict_t* Item, NSDeployableItem ItemType)
 {
 	if (FNullEnt(Item)) { return; }
 
+	if (Item->v.solid != SOLID_TRIGGER) { return; }
+
+	if (Item->v.effects & EF_NODRAW) { return; }
+
 	int EntIndex = ENTINDEX(Item);
 	if (EntIndex < 0) { return; }
 
@@ -3101,7 +3121,7 @@ void UTIL_UpdateMarineItem(edict_t* Item, NSDeployableItem ItemType)
 
 void UTIL_UpdateBuildableStructure(edict_t* Structure)
 {
-	if (FNullEnt(Structure)) { return; }
+	if (FNullEnt(Structure) || (Structure->v.effects & EF_NODRAW)) { return; }
 
 	NSStructureType StructureType = UTIL_IUSER3ToStructureType(Structure->v.iuser3);
 
@@ -3343,35 +3363,41 @@ const hive_definition* UTIL_GetNearestHiveAtLocation(const Vector Location)
 
 edict_t* UTIL_AlienFindNearestHealingSpot(bot_t* pBot, const Vector SearchLocation)
 {
+	bool bVeryLowHealth = GetPlayerOverallHealthPercent(pBot->pEdict) < 0.25f;
+
 	edict_t* HealingSources[3];
 
 	HealingSources[0] = UTIL_GetNearestStructureIndexOfType(SearchLocation, STRUCTURE_ALIEN_HIVE, UTIL_MetresToGoldSrcUnits(100.0f), true, IsPlayerMarine(pBot->pEdict));
+	
+	// Can't heal without a hive. Game over!
+	if (FNullEnt(HealingSources[0])) { return nullptr; }
+	
 	HealingSources[1] = UTIL_GetNearestStructureIndexOfType(SearchLocation, STRUCTURE_ALIEN_DEFENCECHAMBER, UTIL_MetresToGoldSrcUnits(100.0f), true, IsPlayerMarine(pBot->pEdict));
-	HealingSources[2] = UTIL_GetNearestPlayerOfClass(SearchLocation, CLASS_GORGE, UTIL_MetresToGoldSrcUnits(100.0f), pBot->pEdict);
+	// Don't heal at a gorge if we're badly hurt, too exposed and risky
+	HealingSources[2] = (!bVeryLowHealth) ? UTIL_GetNearestPlayerOfClass(SearchLocation, CLASS_GORGE, UTIL_MetresToGoldSrcUnits(100.0f), pBot->pEdict) : nullptr;
 
-	int NearestHealingSource = -1;
-	float MinDist = 0.0f;
+	if (FNullEnt(HealingSources[1]) && FNullEnt(HealingSources[2])) { return HealingSources[0]; }
 
-	for (int i = 0; i < 3; i++)
+	float HiveDist = vDist2DSq(HealingSources[0]->v.origin, SearchLocation);
+	float ChamberDist = (!FNullEnt(HealingSources[1])) ? (vDist2DSq(HealingSources[1]->v.origin, SearchLocation) * 1.3f) : FLT_MAX;
+	float GorgeDist = (!FNullEnt(HealingSources[2])) ? (vDist2DSq(HealingSources[2]->v.origin, SearchLocation) * 2.0f) : FLT_MAX;
+
+	if (HiveDist < ChamberDist && HiveDist < GorgeDist)
 	{
-		if (!FNullEnt(HealingSources[i]))
-		{
-			float ThisDist = vDist2DSq(HealingSources[i]->v.origin, SearchLocation);
-
-			if (NearestHealingSource < 0 || ThisDist < MinDist)
-			{
-				NearestHealingSource = i;
-				MinDist = ThisDist;
-			}
-		}
+		return HealingSources[0];
 	}
 
-	if (NearestHealingSource > -1)
+	if (ChamberDist < HiveDist && ChamberDist < GorgeDist)
 	{
-		return HealingSources[NearestHealingSource];
+		return HealingSources[1];
 	}
 
-	return nullptr;
+	if (GorgeDist < HiveDist && GorgeDist < GorgeDist)
+	{
+		return HealingSources[2];
+	}
+	
+	return HealingSources[0];
 }
 
 edict_t* PlayerGetNearestDangerTurret(const edict_t* Player, float MaxDistance)
@@ -4228,7 +4254,7 @@ const char* UTIL_StructTypeToChar(const NSStructureType StructureType)
 	case STRUCTURE_MARINE_TURRETFACTORY:
 		return "Turret Factory";
 	case STRUCTURE_MARINE_ADVTURRETFACTORY:
-		return "Advanced Turret Factory";
+		return "Adv. Turret Factory";
 	case STRUCTURE_MARINE_TURRET:
 		return "Turret";
 	case STRUCTURE_MARINE_SIEGETURRET:

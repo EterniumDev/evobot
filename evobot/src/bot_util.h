@@ -40,14 +40,16 @@ static const float build_attempt_retry_time = 0.5f;
 static const float min_request_spam_time = 10.0f;
 
 // Max rate bot can run its logic, default is 1/60th second. WARNING: Increasing the rate past 100hz causes bots to move and turn slowly due to GoldSrc limits!
-static const float BOT_MIN_FRAME_TIME = (1.0f / 60.0f);
+static const double BOT_MIN_FRAME_TIME = (1.0 / 60.0);
 
 
 void BotLookAt(bot_t* pBot, edict_t* target);
 void BotLookAt(bot_t* pBot, const Vector target);
 void BotMoveLookAt(bot_t* pBot, const Vector target);
+// No view interpolation, but view instantly snaps to target
+void BotDirectLookAt(bot_t* pBot, Vector target);
 
-
+void UTIL_DisplayBotInfo(bot_t* pBot);
 
 enemy_status* UTIL_GetTrackedEnemyRefForTarget(bot_t* pBot, edict_t* Target);
 
@@ -56,9 +58,13 @@ void BotLeap(bot_t* pBot, const Vector TargetLocation);
 bool CanBotLeap(bot_t* pBot);
 void BotJump(bot_t* pBot);
 
+// Bot will perform LOS checks and return true if it successfully attacked the target
+void BotShootTarget(bot_t* pBot, NSWeapon AttackWeapon, edict_t* Target);
+
 void BotAttackTarget(bot_t* pBot, edict_t* Target);
-void BotAttackStructure(bot_t* pBot, edict_t* Target);
-void DEBUG_BotAttackTarget(bot_t* pBot, edict_t* Target);
+
+BotAttackResult PerformAttackLOSCheck(bot_t* pBot, const NSWeapon Weapon, const edict_t* Target);
+BotAttackResult PerformAttackLOSCheck(const Vector Location, const NSWeapon Weapon, const edict_t* Target);
 
 float GetLeapCost(bot_t* pBot);
 
@@ -70,7 +76,7 @@ void BotTakeDamage(bot_t* pBot, int damageTaken, edict_t* aggressor);
 void BotDied(bot_t* pBot, edict_t* killer);
 void BotKilledPlayer(bot_t* pBot, edict_t* victim);
 
-bot_t* GetBotPointer(edict_t* pEdict);
+bot_t* GetBotPointer(const edict_t* pEdict);
 int GetBotIndex(edict_t* pEdict);
 
 bot_msg* UTIL_GetAvailableBotMsgSlot(bot_t* pBot);
@@ -110,7 +116,13 @@ void ReadyRoomThink(bot_t* pBot);
 
 void BotThink(bot_t* pBot);
 
+// Called during the regular NS game mode
 void RegularModeThink(bot_t* pBot);
+// Called during the combat game mode
+void CombatModeThink(bot_t* pBot);
+// Called if there isn't a valid game mode in play (e.g. user has loaded non-NS map). Bots will randomly roam and attack enemies but nothing else
+void InvalidModeThink(bot_t* pBot);
+
 void TestNavThink(bot_t* pBot);
 void TestGuardThink(bot_t* pBot);
 void TestAimThink(bot_t* pBot);
@@ -123,5 +135,21 @@ void BotRestartPlay(bot_t* pBot);
 void FakeClientCommand(edict_t* pBot, const char* arg1, const char* arg2, const char* arg3);
 void BotSwitchToWeapon(bot_t* pBot, NSWeapon NewWeaponSlot);
 
+// Test the bot melee system
+void DEBUG_BotMeleeTarget(bot_t* pBot, edict_t* Target);
+
+// Called when the bot levels up in Combat mode
+void OnBotCombatLevelUp(bot_t* pBot);
+// How many points has the bot spent on stuff?
+int GetBotSpentCombatPoints(bot_t* pBot);
+// How many points does the bot have right now to spent?
+int GetBotAvailableCombatPoints(bot_t* pBot);
+
+int GetMarineCombatUpgradeCost(const CombatModeMarineUpgrade Upgrade);
+int GetAlienCombatUpgradeCost(const CombatModeAlienUpgrade Upgrade);
+int GetImpulseForMarineCombatUpgrade(const CombatModeMarineUpgrade Upgrade);
+int GetImpulseForAlienCombatUpgrade(const CombatModeAlienUpgrade Upgrade);
+
+bot_t* UTIL_GetSpectatedBot(const edict_t* Observer);
 
 #endif

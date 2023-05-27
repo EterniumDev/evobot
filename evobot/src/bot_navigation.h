@@ -42,7 +42,7 @@ constexpr auto ALL_NAV_PROFILE = 8;
 constexpr auto MIN_PATH_RECALC_TIME = 0.33f; // How frequently can a bot recalculate its path? Default to max 3 times per second
 
 
-#define MAX_PATH_POLY 1024 // Max nav mesh polys that can be traversed in a path. This should be sufficient for any sized map.
+#define MAX_PATH_POLY 512 // Max nav mesh polys that can be traversed in a path. This should be sufficient for any sized map.
 
 // Possible area types. Water, Road, Door and Grass are not used (left-over from Detour library)
 enum SamplePolyAreas
@@ -61,6 +61,7 @@ enum SamplePolyAreas
 	SAMPLE_POLYAREA_PHASEGATE = 11,
 	SAMPLE_POLYAREA_MSTRUCTURE = 12,
 	SAMPLE_POLYAREA_ASTRUCTURE = 13,
+	SAMPLE_POLYAREA_FLY = 14
 };
 
 // Possible movement types. Swim and door are not used
@@ -82,6 +83,7 @@ enum SamplePolyFlags
 	SAMPLE_POLYFLAGS_PHASEGATE = 1 << 13,		// Requires using a phase gate to traverse
 	SAMPLE_POLYFLAGS_MSTRUCTURE = 1 << 14,		// Marine Structure in the way, must be destroyed if alien, or impassable if marine
 	SAMPLE_POLYFLAGS_ASTRUCTURE = 1 << 15,		// Structure in the way, must be destroyed if marine, or impassable if alien
+	SAMPLE_POLYFLAGS_FLY = 1 << 16,		// Structure in the way, must be destroyed if marine, or impassable if alien
 	SAMPLE_POLYFLAGS_ALL = 0xffff		// All abilities.
 };
 
@@ -221,9 +223,10 @@ void BlockedMove(bot_t* pBot, const Vector StartPoint, const Vector EndPoint);
 // Called by NewMove, determines the movement direction and inputs required to drop down from start to end points
 void FallMove(bot_t* pBot, const Vector StartPoint, const Vector EndPoint);
 // Called by NewMove, determines the movement direction and inputs required to climb a ladder to reach endpoint
-void LadderMove(bot_t* pBot, const Vector StartPoint, const Vector EndPoint, float RequiredClimbHeight);
+void LadderMove(bot_t* pBot, const Vector StartPoint, const Vector EndPoint, float RequiredClimbHeight, unsigned char NextArea);
 // Called by NewMove, determines the movement direction and inputs required to climb a wall to reach endpoint
 void WallClimbMove(bot_t* pBot, const Vector StartPoint, const Vector EndPoint, float RequiredClimbHeight);
+void BlinkClimbMove(bot_t* pBot, const Vector StartPoint, const Vector EndPoint, float RequiredClimbHeight);
 // Called by NewMove, determines the movement direction and inputs required to use a phase gate to reach end point
 void PhaseGateMove(bot_t* pBot, const Vector StartPoint, const Vector EndPoint);
 
@@ -288,10 +291,13 @@ bool AreKeyPointsReachableForBot(bot_t* pBot);
 	Will handle path calculation, following the path, detecting if stuck and trying to unstick itself.
 	Will only recalculate paths if it decides it needs to, so is safe to call every frame.
 */
-bool MoveTo(bot_t* pBot, const Vector Destination, const BotMoveStyle MoveStyle);
+bool MoveTo(bot_t* pBot, const Vector Destination, const BotMoveStyle MoveStyle, const float MaxAcceptableDist = max_player_use_reach);
 
 // Used by the MoveTo command, handles the bot's movement and inputs to follow a path it has calculated for itself
 void BotFollowPath(bot_t* pBot);
+void BotFollowFlightPath(bot_t* pBot);
+
+int GetNextDirectFlightPath(bot_t* pBot);
 
 // Walks directly towards the destination. No path finding, just raw movement input. Will detect obstacles and try to jump/duck under them.
 void MoveDirectlyTo(bot_t* pBot, const Vector Destination);
@@ -306,9 +312,15 @@ dtStatus FindPathToPoint(const int NavProfileIndex, const Vector FromLocation, c
 // Special path finding that takes the presence of phase gates into account 
 dtStatus FindPhaseGatePathToPoint(const int NavProfileIndex, Vector FromLocation, Vector ToLocation, bot_path_node* path, int* pathSize, float MaxAcceptableDistance);
 
+// Special path finding that takes the presence of phase gates into account 
+dtStatus FindFlightPathToPoint(const int NavProfileIndex, Vector FromLocation, Vector ToLocation, bot_path_node* path, int* pathSize, float MaxAcceptableDistance);
+
+Vector UTIL_FindHighestSuccessfulTracePoint(const Vector TraceFrom, const Vector TargetPoint, const Vector NextPoint, const float IterationStep, const float MinIdealHeight, const float MaxHeight);
+
 // Similar to FindPathToPoint, but you can specify a max acceptable distance for partial results. Will return a failure if it can't reach at least MaxAcceptableDistance away from the ToLocation
 dtStatus FindPathClosestToPoint(bot_t* pBot, const BotMoveStyle MoveStyle, const Vector FromLocation, const Vector ToLocation, bot_path_node* path, int* pathSize, float MaxAcceptableDistance);
 dtStatus FindPathClosestToPoint(const int NavProfileIndex, const Vector FromLocation, const Vector ToLocation, bot_path_node* path, int* pathSize, float MaxAcceptableDistance);
+dtStatus FindDetailedPathClosestToPoint(const int NavProfileIndex, const Vector FromLocation, const Vector ToLocation, bot_path_node* path, int* pathSize, float MaxAcceptableDistance);
 
 // If the bot is stuck and off the path or nav mesh, this will try to find a point it can directly move towards to get it back on track
 Vector FindClosestPointBackOnPath(bot_t* pBot);
@@ -412,7 +424,7 @@ void ClearBotPath(bot_t* pBot);
 void ClearBotStuckMovement(bot_t* pBot);
 
 // Draws just the bot's next movement on its path. Colour-coded based on the movement type (e.g. walk, crouch, jump, ladder)
-void DEBUG_DrawBotNextPathPoint(bot_t* pBot);
+void DEBUG_DrawBotNextPathPoint(bot_t* pBot, float TimeInSeconds);
 
 // Based on the direction the bot wants to move and it's current facing angle, sets the forward and side move, and the directional buttons to make the bot actually move
 void BotMovementInputs(bot_t* pBot);
@@ -427,6 +439,10 @@ void UTIL_PopulateDoors();
 
 // If the bot has a path, will draw it out in full if bShort is false, or just the first 5 path nodes if bShort is true
 void BotDrawPath(bot_t* pBot, float DrawTimeInSeconds, bool bShort);
+
+void DEBUG_TestFlightPathFind(edict_t* pEdict, const Vector Destination);
+
+Vector UTIL_AdjustPointAwayFromNavWall(const Vector Location, const float MaxDistanceFromWall);
 
 #endif // BOT_NAVIGATION_H
 

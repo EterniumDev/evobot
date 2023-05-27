@@ -33,7 +33,6 @@
  */
 
 #include <time.h>
-
 #include <extdll.h>
 
 #include <dllapi.h>
@@ -65,7 +64,7 @@ extern bool bGameHasStarted;
 
 extern int GameStatus;
 
-extern float last_think_time;
+float last_think_time;
 
 extern float last_bot_count_check_time;
 
@@ -133,6 +132,35 @@ void ClientCommand(edict_t* pEntity)
 		RETURN_META(MRES_SUPERCEDE);
 	}
 
+	if (FStrEq(pcmd, "getgamemode"))
+	{
+		const char* GameMode = UTIL_GameModeToChar(GAME_GetGameMode());
+
+		char buf[32];
+		sprintf(buf, "%s\n", GameMode);
+		UTIL_SayText(buf, pEntity);
+
+		RETURN_META(MRES_SUPERCEDE);
+	}
+
+	if (FStrEq(pcmd, "testflight"))
+	{
+		DEBUG_TestFlightPathFind(pEntity, UTIL_GetCommChairLocation());
+
+		RETURN_META(MRES_SUPERCEDE);
+	}
+
+	if (FStrEq(pcmd, "testadjust"))
+	{
+		Vector AdjustLoc = UTIL_AdjustPointAwayFromNavWall(UTIL_GetEntityGroundLocation(pEntity), 32.0f);
+
+		UTIL_DrawLine(pEntity, pEntity->v.origin, AdjustLoc, 10.0f);
+
+		RETURN_META(MRES_SUPERCEDE);
+
+	}
+
+
 	if (FStrEq(pcmd, "traceentity"))
 	{
 
@@ -147,7 +175,7 @@ void ClientCommand(edict_t* pEntity)
 
 		//UTIL_TraceLine(TraceStart, TraceEnd, dont_ignore_monsters, dont_ignore_glass, pEntity, &Hit);
 
-		if (Hit.flFraction < 1.0f)
+		if (!FNullEnt(Hit.pHit))
 		{
 			char buf[64];
 			sprintf(buf, "Hit Entity: %s\n", STRING(Hit.pHit->v.classname));
@@ -247,6 +275,8 @@ void ClientCommand(edict_t* pEntity)
 
 		BotDrawPath(pBot, 20.0f, false);
 
+		DEBUG_DrawBotNextPathPoint(pBot, 20.0f);
+
 		sprintf(buf, "Path Status: %s\n", pBot->PathStatus);
 		UTIL_SayText(buf, pEntity);
 
@@ -256,6 +286,40 @@ void ClientCommand(edict_t* pEntity)
 		RETURN_META(MRES_SUPERCEDE);
 	}
 
+	if (FStrEq(pcmd, "botcombatpoints"))
+	{
+		if (!NavmeshLoaded())
+		{
+			UTIL_SayText("Navmesh is not loaded", pEntity);
+			RETURN_META(MRES_SUPERCEDE);
+		}
+
+		edict_t* SpectatorTarget = INDEXENT(pEntity->v.iuser2);
+
+		if (FNullEnt(SpectatorTarget))
+		{
+			UTIL_SayText("No Spectator Target\n", listenserver_edict);
+			RETURN_META(MRES_SUPERCEDE);
+		}
+
+		int BotIndex = GetBotIndex(SpectatorTarget);
+
+		if (BotIndex < 0)
+		{
+			UTIL_SayText("Not spectating a bot\n", listenserver_edict);
+			RETURN_META(MRES_SUPERCEDE);
+		}
+
+		bot_t* pBot = &bots[BotIndex];
+
+		char buf[32];
+
+		sprintf(buf, "%d\n", GetBotAvailableCombatPoints(pBot));
+
+		UTIL_SayText(buf, pEntity);
+
+		RETURN_META(MRES_SUPERCEDE);
+	}
 
 	if (FStrEq(pcmd, "bottaskinfo"))
 	{
@@ -462,19 +526,48 @@ void ClientCommand(edict_t* pEntity)
 		{
 			if (bots[i].is_used)  // not respawning
 			{
-				bots[i].PrimaryBotTask.TaskType = TASK_MOVE;
-				bots[i].PrimaryBotTask.TaskLocation = UTIL_GetFloorUnderEntity(pEntity);
-				bots[i].PrimaryBotTask.bOrderIsUrgent = true;
+				TASK_SetMoveTask(&bots[i], &bots[i].PrimaryBotTask, UTIL_GetFloorUnderEntity(pEntity), true);
 			}
 		}
 		RETURN_META(MRES_SUPERCEDE);
 	}
 
-	const int		kGameStatusReset = 0;
-	const int		kGameStatusResetNewMap = 1;
-	const int		kGameStatusEnded = 2;
-	const int		kGameStatusGameTime = 3;
-	const int		kGameStatusUnspentLevels = 4;
+	if (FStrEq(pcmd, "testattack"))
+	{
+		if (!NavmeshLoaded())
+		{
+			UTIL_SayText("Navmesh is not loaded", pEntity);
+			RETURN_META(MRES_SUPERCEDE);
+		}
+
+		for (int i = 0; i < gpGlobals->maxClients; i++)
+		{
+			if (bots[i].is_used)  // not respawning
+			{
+				if (IsPlayerMarine(bots[i].pEdict))
+				{
+					edict_t* ResTower = UTIL_GetNearestStructureIndexOfType(bots[i].pEdict->v.origin, STRUCTURE_ALIEN_RESTOWER, UTIL_MetresToGoldSrcUnits(200.0f), false, true);
+
+					if (!FNullEnt(ResTower))
+					{
+						TASK_SetAttackTask(&bots[i], &bots[i].PrimaryBotTask, ResTower, true);
+					}
+					else
+					{
+						const hive_definition* Hive = UTIL_GetNearestBuiltHiveToLocation(bots[i].pEdict->v.origin);
+
+						if (Hive)
+						{
+							TASK_SetAttackTask(&bots[i], &bots[i].PrimaryBotTask, Hive->edict, true);
+						}
+					}
+				}
+
+				
+			}
+		}
+		RETURN_META(MRES_SUPERCEDE);
+	}
 
 	if (FStrEq(pcmd, "gamestatus"))
 	{
@@ -516,6 +609,7 @@ void ClientCommand(edict_t* pEntity)
 		RETURN_META(MRES_SUPERCEDE);
 	}
 
+
 	if (FStrEq(pcmd, "evolvegorge"))
 	{
 		if (!NavmeshLoaded())
@@ -532,7 +626,30 @@ void ClientCommand(edict_t* pEntity)
 				{
 					bots[i].PrimaryBotTask.TaskType = TASK_EVOLVE;
 					bots[i].PrimaryBotTask.Evolution = IMPULSE_ALIEN_EVOLVE_GORGE;
-					bots[i].PrimaryBotTask.TaskLocation = UTIL_GetFloorUnderEntity(pEntity);
+					bots[i].PrimaryBotTask.TaskLocation = bots[i].pEdict->v.origin;
+				}
+			}
+		}
+		RETURN_META(MRES_SUPERCEDE);
+	}
+
+	if (FStrEq(pcmd, "evolvelerk"))
+	{
+		if (!NavmeshLoaded())
+		{
+			UTIL_SayText("Navmesh is not loaded", pEntity);
+			RETURN_META(MRES_SUPERCEDE);
+		}
+
+		for (int i = 0; i < gpGlobals->maxClients; i++)
+		{
+			if (bots[i].is_used)  // not respawning
+			{
+				if (IsPlayerOnAlienTeam(bots[i].pEdict) && !IsPlayerDead(bots[i].pEdict))
+				{
+					bots[i].PrimaryBotTask.TaskType = TASK_EVOLVE;
+					bots[i].PrimaryBotTask.Evolution = IMPULSE_ALIEN_EVOLVE_LERK;
+					bots[i].PrimaryBotTask.TaskLocation = bots[i].pEdict->v.origin;
 				}
 			}
 		}
@@ -555,7 +672,7 @@ void ClientCommand(edict_t* pEntity)
 				{
 					bots[i].PrimaryBotTask.TaskType = TASK_EVOLVE;
 					bots[i].PrimaryBotTask.Evolution = IMPULSE_ALIEN_EVOLVE_FADE;
-					bots[i].PrimaryBotTask.TaskLocation = UTIL_GetFloorUnderEntity(pEntity);
+					bots[i].PrimaryBotTask.TaskLocation = bots[i].pEdict->v.origin;
 				}
 			}
 		}
@@ -578,7 +695,7 @@ void ClientCommand(edict_t* pEntity)
 				{
 					bots[i].PrimaryBotTask.TaskType = TASK_EVOLVE;
 					bots[i].PrimaryBotTask.Evolution = IMPULSE_ALIEN_EVOLVE_ONOS;
-					bots[i].PrimaryBotTask.TaskLocation = UTIL_GetFloorUnderEntity(pEntity);
+					bots[i].PrimaryBotTask.TaskLocation = bots[i].pEdict->v.origin;
 				}
 			}
 		}
@@ -643,10 +760,8 @@ int Spawn(edict_t* pent)
 
 		if (strcmp(pClassname, "worldspawn") == 0)
 		{
-			
-
+			UnloadNavigationData();
 			GAME_Reset();
-
 			ParseConfigFile(false);
 		}
 
@@ -678,8 +793,7 @@ void StartFrame(void)
 
 	if (gpGlobals->deathmatch)
 	{
-
-		static int i, index, player_index, bot_index;
+		static int bot_index;
 
 		if (gpGlobals->time >= 5.0f)
 		{
@@ -713,6 +827,21 @@ void StartFrame(void)
 					UTIL_RefreshMarineItems();
 					last_item_refresh_time = gpGlobals->time;
 				}
+
+				edict_t* SpectatorTarget = INDEXENT(GAME_GetListenServerEdict()->v.iuser2);
+
+				if (!FNullEnt(SpectatorTarget))
+				{
+					int BotIndex = GetBotIndex(SpectatorTarget);
+
+					if (BotIndex >= 0)
+					{
+						bot_t* pBot = &bots[BotIndex];
+
+						UTIL_DisplayBotInfo(pBot);
+					}
+				}
+
 			}
 
 			float timeSinceLastThink = ((currTime - last_think_time) / CLOCKS_PER_SEC);
@@ -771,8 +900,8 @@ void StartFrame(void)
 		}
 
 	}
+
 	prevtime = currTime;
-	previous_time = gpGlobals->time;
 
 	RETURN_META(MRES_IGNORED);
 }

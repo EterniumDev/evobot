@@ -106,6 +106,17 @@ typedef enum
 }
 BotTaskType;
 
+// 
+typedef enum
+{
+	ATTACK_SUCCESS,
+	ATTACK_BLOCKED,
+	ATTACK_OUTOFRANGE,
+	ATTACK_INVALIDTARGET,
+	ATTACK_NOWEAPON
+}
+BotAttackResult;
+
 typedef struct
 {
 	char szClassname[64];
@@ -177,6 +188,7 @@ typedef struct _NAV_STATUS
 	bool bIsJumping = false; // Is the bot in the air from a jump? Will duck so it can duck-jump
 	bool IsOnGround = true; // Is the bot currently on the ground, or on a ladder?
 	bool bHasAttemptedJump = false; // Last frame, the bot tried a jump. If the bot is still on the ground, it probably tried to jump in a vent or something
+	float LastFlapTime = 0.0f; // When the bot last flapped its wings (if Lerk). Prevents per-frame spam draining adrenaline
 
 	BotMoveStyle MoveStyle = MOVESTYLE_NORMAL; // Current desired move style (e.g. normal, ambush, hide). Will trigger new path calculations if this changes
 	float LastPathCalcTime = 0.0f; // When the bot last calculated a path, to limit how frequently it can recalculate
@@ -246,7 +258,7 @@ typedef struct _BOT_TASK
 	float TaskStartedTime = 0.0f; // When the bot started this task. Helps time-out if the bot gets stuck trying to complete it
 	bool bIssuedByCommander = false; // Was this task issued by the commander? Top priority if so
 	bool bTargetIsPlayer = false; // Is the TaskTarget a player?
-	bool bOrderIsUrgent = false; // Determines whether this task is prioritised over others if bot has multiple
+	bool bTaskIsUrgent = false; // Determines whether this task is prioritised over others if bot has multiple
 	bool bIsWaitingForBuildLink = false; // If true, Gorge has sent the build impulse and is waiting to see if the building materialised
 	float LastBuildAttemptTime = 0.0f; // When did the Gorge last try to place a structure?
 	int BuildAttempts = 0; // How many attempts the Gorge has tried to place it, so it doesn't keep trying forever
@@ -407,6 +419,15 @@ typedef struct _BOT_T
 	bool bIsPendingKill = false; // Has the bot issued a "kill" command and it waiting for oblivion?
 
 	float CommanderLastBeaconTime = 0.0f; // When the last time commander used beacon was
+
+	// Current combat mode level
+	int CombatLevel = 1;
+	// Number of upgrade points the bot has in combat mode
+	int NumUpgradePoints = 0;
+	// Which upgrades the bot has already chosen in combat mode
+	int CombatUpgradeMask = 0;
+	// Which combat mode upgrade does the bot want to get next? Will save if necessary for it
+	int BotNextCombatUpgrade = 0;
 
 } bot_t;
 

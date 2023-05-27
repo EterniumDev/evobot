@@ -77,7 +77,7 @@ typedef struct _HIVE_DEFINITION_T
 	Vector FloorLocation = ZERO_VECTOR; // Some hives are suspended in the air, this is the floor location directly beneath it
 	HiveStatusType Status = HIVE_STATUS_UNBUILT; // Can be unbuilt, in progress, or fully built
 	HiveTechStatus TechStatus = HIVE_TECH_NONE; // What tech (if any) is assigned to this hive right now
-	float HealthPercent = 0.0f; // How much health it has
+	int HealthPercent = 0; // How much health it has
 	bool bIsUnderAttack = false; // Is the hive currently under attack? Becomes false if not taken damage for more than 10 seconds
 	int HiveResNodeIndex = -1; // Which resource node (indexes into ResourceNodes array) belongs to this hive?
 	unsigned int ObstacleRef = 0; // When in progress or built, will place an obstacle so bots don't try to walk through it
@@ -87,10 +87,7 @@ typedef struct _HIVE_DEFINITION_T
 // How frequently to update the global list of built structures (in seconds)
 static const float structure_inventory_refresh_rate = 0.2f;
 
-// Increments by 1 every time the structure list is refreshed. Used to detect if structures have been destroyed and no longer show up
-static int StructureRefreshFrame = 0;
-// Increments by 1 every time the item list is refreshed. Used to detect if items have been removed from play and no longer show up
-static int ItemRefreshFrame = 0;
+
 
 // How frequently to update the global list of dropped marine items (in seconds)
 static const float item_inventory_refresh_rate = 0.1f;
@@ -171,7 +168,7 @@ void SetHiveLocation(int HiveIndex, const Vector NewLocation);
 void SetHiveStatus(int HiveIndex, int NewStatus);
 void SetHiveTechStatus(int HiveIndex, int NewTechStatus);
 void SetHiveUnderAttack(int HiveIndex, bool bNewUnderAttack);
-void SetHiveHealthPercent(int HiveIndex, float NewHealthPercent);
+void SetHiveHealthPercent(int HiveIndex, int NewHealthPercent);
 
 int UTIL_GetNumResNodes();
 
@@ -283,7 +280,7 @@ int UTIL_GetNumUnbuiltHives();
 
 const hive_definition* UTIL_GetNearestHiveAtLocation(const Vector Location);
 
-// Will find the nearest gorge, defence chamber or hive, whichever is closest to SearchLocation
+// Will find the nearest gorge, defence chamber or hive, whichever is closest to SearchLocation. Weighted so it favours hives and chambers over gorges
 edict_t* UTIL_AlienFindNearestHealingSpot(bot_t* pBot, const Vector SearchLocation);
 
 /*	A resource node needs reinforcing if:

@@ -277,13 +277,13 @@ float vSize2D(const Vector V)
 // Returns true if the two vectors are the same (all components are within 0.01f of each other)
 bool vEquals(const Vector v1, const Vector v2)
 {
-	return fabs(v1.x - v2.x) <= 0.01f && fabs(v1.y - v2.y) <= 0.01f && fabs(v1.z - v2.z) <= 0.01f;
+	return fabsf(v1.x - v2.x) <= 0.01f && fabsf(v1.y - v2.y) <= 0.01f && fabsf(v1.z - v2.z) <= 0.01f;
 }
 
 // Returns true if the two vectors are the same (all components are within epsilon of each other)
 bool vEquals(const Vector v1, const Vector v2, const float epsilon)
 {
-	return fabs(v1.x - v2.x) <= epsilon && fabs(v1.y - v2.y) <= epsilon && fabs(v1.z - v2.z) <= epsilon;
+	return fabsf(v1.x - v2.x) <= epsilon && fabsf(v1.y - v2.y) <= epsilon && fabsf(v1.z - v2.z) <= epsilon;
 }
 
 bool fNearlyEqual(const float f1, const float f2)
@@ -371,6 +371,11 @@ float sqrf(float input)
 int imaxi(const int a, const int b)
 {
 	return (a > b) ? a : b;
+}
+
+int imini(const int a, const int b)
+{
+	return (a < b) ? a : b;
 }
 
 float clampf(float input, float inMin, float inMax)
@@ -608,8 +613,7 @@ Vector UTIL_GetForwardVector2D(const Vector angles)
 	Vector fwd, right, up;
 
 	UTIL_AnglesToVector(angles, &fwd, &right, &up);
-	fwd.z = 0.0f;
-	return UTIL_GetVectorNormal(fwd);
+	return UTIL_GetVectorNormal2D(fwd);
 }
 
 float UTIL_GetDistanceToPolygon2DSq(const Vector TestPoint, const Vector* Points, const int NumPoints)
@@ -684,4 +688,25 @@ Vector UTIL_GetRandomPointInBoundingBox(const Vector BoxMin, const Vector BoxMax
 	float RandZ = frandrange(BoxMin.z, BoxMax.z);
 
 	return Vector(RandX, RandY, RandZ);
+}
+
+/* Function to get no of set bits in binary
+   representation of positive integer n */
+unsigned int UTIL_CountSetBitsInInteger(unsigned int n)
+{
+	unsigned int count = 0;
+	while (n)
+	{
+		count += n & 1;
+		n >>= 1;
+	}
+	return count;
+}
+
+float UTIL_CalculateSlopeAngleBetweenPoints(const Vector StartPoint, const Vector EndPoint)
+{
+	float Run = vDist2DSq(StartPoint, EndPoint);
+	float Rise = fabsf(StartPoint.z - EndPoint.z);
+
+	return atanf(Rise / Run);
 }

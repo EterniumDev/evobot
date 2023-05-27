@@ -41,7 +41,7 @@ void MarineThink(bot_t* pBot)
 
 	BotUpdateAndClearTasks(pBot);
 
-	if (pBot->PrimaryBotTask.TaskType == TASK_NONE || (!pBot->PrimaryBotTask.bOrderIsUrgent && !pBot->PrimaryBotTask.bIssuedByCommander))
+	if (pBot->PrimaryBotTask.TaskType == TASK_NONE || (!pBot->PrimaryBotTask.bTaskIsUrgent && !pBot->PrimaryBotTask.bIssuedByCommander))
 	{
 		BotRole RequiredRole = MarineGetBestBotRole(pBot);
 
@@ -58,7 +58,7 @@ void MarineThink(bot_t* pBot)
 
 	}
 
-	if (pBot->SecondaryBotTask.TaskType == TASK_NONE || !pBot->SecondaryBotTask.bOrderIsUrgent)
+	if (pBot->SecondaryBotTask.TaskType == TASK_NONE || !pBot->SecondaryBotTask.bTaskIsUrgent)
 	{
 		MarineSetSecondaryTask(pBot, &pBot->SecondaryBotTask);
 	}
@@ -76,7 +76,7 @@ void MarineThink(bot_t* pBot)
 
 		if (pBot->CurrentTask->TaskType != TASK_ATTACK && DistToTurret < sqrf(UTIL_MetresToGoldSrcUnits(10.0f)))
 		{
-			BotAttackStructure(pBot, DangerTurret);
+			BotAttackTarget(pBot, DangerTurret);
 			return;
 		}
 	}
@@ -94,12 +94,65 @@ void MarineThink(bot_t* pBot)
 
 }
 
+void MarineCombatModeThink(bot_t* pBot)
+{
+	edict_t* pEdict = pBot->pEdict;
+
+	if (pBot->CurrentEnemy > -1)
+	{
+		if (MarineCombatThink(pBot))
+		{
+			if (pBot->DesiredCombatWeapon == WEAPON_NONE)
+			{
+				pBot->DesiredCombatWeapon = BotMarineChooseBestWeapon(pBot, pBot->TrackedEnemies[pBot->CurrentEnemy].EnemyEdict);
+			}
+
+			return;
+		}
+	}
+
+	BotUpdateAndClearTasks(pBot);
+
+	if (pBot->PrimaryBotTask.TaskType == TASK_NONE || (!pBot->PrimaryBotTask.bTaskIsUrgent && !pBot->PrimaryBotTask.bIssuedByCommander))
+	{
+		BotRole RequiredRole = MarineGetBestCombatModeRole(pBot);
+
+		if (pBot->CurrentRole != RequiredRole)
+		{
+			UTIL_ClearBotTask(pBot, &pBot->PrimaryBotTask);
+			UTIL_ClearBotTask(pBot, &pBot->SecondaryBotTask);
+
+			pBot->CurrentRole = RequiredRole;
+			pBot->CurrentTask = &pBot->PrimaryBotTask;
+		}
+
+		BotMarineSetCombatModePrimaryTask(pBot, &pBot->PrimaryBotTask);
+
+	}
+
+	if (pBot->SecondaryBotTask.TaskType == TASK_NONE || !pBot->SecondaryBotTask.bTaskIsUrgent)
+	{
+		MarineSetCombatModeSecondaryTask(pBot, &pBot->SecondaryBotTask);
+	}
+
+	MarineCombatModeCheckWantsAndNeeds(pBot);
+
+	pBot->CurrentTask = BotGetNextTask(pBot);
+
+	BotProgressTask(pBot, pBot->CurrentTask);
+
+	if (pBot->DesiredCombatWeapon == WEAPON_NONE)
+	{
+		pBot->DesiredCombatWeapon = BotMarineChooseBestWeapon(pBot, nullptr);
+	}
+}
+
 void BotMarineSetPrimaryTask(bot_t* pBot, bot_task* Task)
 {
 	if (pBot->CurrentRole == BOT_ROLE_COMMAND)
 	{
 		Task->TaskType = TASK_COMMAND;
-		Task->bOrderIsUrgent = false;
+		Task->bTaskIsUrgent = false;
 		Task->TaskLength = 0.0f;
 		return;
 	}
@@ -121,6 +174,95 @@ void BotMarineSetPrimaryTask(bot_t* pBot, bot_task* Task)
 
 }
 
+void BotMarineSetCombatModePrimaryTask(bot_t* pBot, bot_task* Task)
+{
+	switch (pBot->CurrentRole)
+	{
+	case BOT_ROLE_SWEEPER:
+		MarineSweeperSetCombatModePrimaryTask(pBot, Task);
+		return;
+	case BOT_ROLE_ASSAULT:
+		MarineAssaultSetCombatModePrimaryTask(pBot, Task);
+		return;
+	default:
+		return;
+	}
+
+}
+
+void MarineSweeperSetCombatModePrimaryTask(bot_t* pBot, bot_task* Task)
+{
+	if (Task->TaskType == TASK_WELD) { return; }
+
+	if (PlayerHasWeapon(pBot->pEdict, WEAPON_MARINE_WELDER))
+	{
+		edict_t* DamagedStructure = UTIL_FindClosestDamagedStructure(pBot->pEdict->v.origin, MARINE_TEAM, UTIL_MetresToGoldSrcUnits(30.0f), true);
+
+		if (!FNullEnt(DamagedStructure))
+		{
+			Task->TaskType = TASK_WELD;
+			Task->TaskTarget = DamagedStructure;
+			Task->TaskLocation = DamagedStructure->v.origin;
+			Task->bTaskIsUrgent = true;
+			return;
+		}
+	}
+
+	if (Task->TaskType == TASK_GUARD) { return; }
+
+	Task->TaskType = TASK_GUARD;
+	Task->TaskLocation = UTIL_GetCommChairLocation();
+	Task->bTaskIsUrgent = false;
+	Task->TaskLength = frandrange(20.0f, 30.0f);
+	return;
+}
+
+void MarineAssaultSetCombatModePrimaryTask(bot_t* pBot, bot_task* Task)
+{
+	if (pBot->PrimaryBotTask.TaskType != TASK_NONE) { return; }
+	
+	const hive_definition* Hive = UTIL_GetNearestHiveAtLocation(pBot->pEdict->v.origin);
+
+	if (!Hive) { return; }
+
+	float DistToHive = vDist2DSq(pBot->pEdict->v.origin, Hive->FloorLocation);
+
+	bool bShouldAttack = (DistToHive <= sqrf(UTIL_MetresToGoldSrcUnits(15.0f))) ? true : randbool();
+
+	if (bShouldAttack)
+	{
+		if (Hive)
+		{
+			int BotProfile = UTIL_GetMoveProfileForBot(pBot, MOVESTYLE_NORMAL);
+
+			Vector AttackLocation = FindClosestNavigablePointToDestination(BotProfile, pBot->pEdict->v.origin, Hive->FloorLocation, UTIL_MetresToGoldSrcUnits(10.0f));
+
+			if (vDist2DSq(AttackLocation, Hive->FloorLocation) < sqrf(32.0f))
+			{
+				Vector NewAttackLocation = UTIL_GetRandomPointOnNavmeshInRadius(BotProfile, AttackLocation, UTIL_MetresToGoldSrcUnits(3.0f));
+
+				if (NewAttackLocation != ZERO_VECTOR)
+				{
+					AttackLocation = NewAttackLocation;
+				}
+			}
+
+			TASK_SetAttackTask(pBot, Task, Hive->edict, true);
+			return;
+		}
+	}
+	else
+	{
+		int BotNavProfile = UTIL_GetMoveProfileForBot(pBot, MOVESTYLE_NORMAL);
+		Vector NewLocation = UTIL_GetRandomPointOnNavmeshInRadius(BotNavProfile, pBot->pEdict->v.origin, UTIL_MetresToGoldSrcUnits(30.0f));
+
+		if (NewLocation != ZERO_VECTOR)
+		{
+			TASK_SetMoveTask(pBot, Task, NewLocation, false);
+		}
+	}
+}
+
 void MarineSweeperSetPrimaryTask(bot_t* pBot, bot_task* Task)
 {
 	if (Task->TaskType == TASK_GUARD) { return; }
@@ -129,7 +271,7 @@ void MarineSweeperSetPrimaryTask(bot_t* pBot, bot_task* Task)
 	{
 		Task->TaskType = TASK_GUARD;
 		Task->TaskLocation = UTIL_GetRandomPointOnNavmeshInRadius(MARINE_REGULAR_NAV_PROFILE, UTIL_GetCommChairLocation(), UTIL_MetresToGoldSrcUnits(10.0f));
-		Task->bOrderIsUrgent = false;
+		Task->bTaskIsUrgent = false;
 		Task->TaskLength = frandrange(20.0f, 30.0f);
 		return;
 	}
@@ -141,7 +283,7 @@ void MarineSweeperSetPrimaryTask(bot_t* pBot, bot_task* Task)
 	{
 		Task->TaskType = TASK_GUARD;
 		Task->TaskLocation = UTIL_GetRandomPointOnNavmeshInRadius(MARINE_REGULAR_NAV_PROFILE, RandPhase->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));
-		Task->bOrderIsUrgent = false;
+		Task->bTaskIsUrgent = false;
 		Task->TaskLength = frandrange(20.0f, 30.0f);
 		return;
 	}
@@ -156,12 +298,7 @@ void MarineCapperSetPrimaryTask(bot_t* pBot, bot_task* Task)
 
 	if (UnclaimedResourceNode)
 	{
-		UTIL_ClearBotTask(pBot, Task);
-		Task->TaskType = TASK_CAP_RESNODE;
-		Task->TaskTarget = nullptr;
-		Task->TaskLocation = UnclaimedResourceNode->origin;
-		Task->bOrderIsUrgent = false;
-		Task->TaskLength = 0.0f;
+		TASK_SetCapResNodeTask(pBot, Task, UnclaimedResourceNode, false);
 		return;
 	}
 
@@ -169,12 +306,9 @@ void MarineCapperSetPrimaryTask(bot_t* pBot, bot_task* Task)
 
 	if (!FNullEnt(EnemyResTower))
 	{
-		UTIL_ClearBotTask(pBot, Task);
-		Task->TaskType = TASK_CAP_RESNODE;
-		Task->TaskTarget = EnemyResTower;
-		Task->TaskLocation = EnemyResTower->v.origin;
-		Task->bOrderIsUrgent = false;
-		Task->TaskLength = 0.0f;
+		const resource_node* EnemyResNode = UTIL_FindNearestResNodeToLocation(EnemyResTower->v.origin);
+
+		TASK_SetCapResNodeTask(pBot, Task, EnemyResNode, false);
 		return;
 	}
 }
@@ -195,10 +329,7 @@ void MarineAssaultSetPrimaryTask(bot_t* pBot, bot_task* Task)
 
 			if (NumMarinesNearby < 1)
 			{
-				Task->TaskType = TASK_BUILD;
-				Task->TaskTarget = Phasegate;
-				Task->TaskLocation = Phasegate->v.origin;
-				Task->bOrderIsUrgent = true;
+				TASK_SetBuildTask(pBot, Task, Phasegate, true);
 				return;
 			}
 		}
@@ -213,10 +344,7 @@ void MarineAssaultSetPrimaryTask(bot_t* pBot, bot_task* Task)
 
 			if (NumMarinesNearby < 1)
 			{
-				Task->TaskType = TASK_BUILD;
-				Task->TaskTarget = TurretFactory;
-				Task->TaskLocation = TurretFactory->v.origin;
-				Task->bOrderIsUrgent = true;
+				TASK_SetBuildTask(pBot, Task, TurretFactory, true);
 				return;
 			}
 		}
@@ -231,10 +359,7 @@ void MarineAssaultSetPrimaryTask(bot_t* pBot, bot_task* Task)
 
 			if (NumMarinesNearby < 1)
 			{
-				Task->TaskType = TASK_BUILD;
-				Task->TaskTarget = SiegeTurret;
-				Task->TaskLocation = SiegeTurret->v.origin;
-				Task->bOrderIsUrgent = true;
+				TASK_SetBuildTask(pBot, Task, SiegeTurret, true);
 				return;
 			}
 		}
@@ -249,10 +374,7 @@ void MarineAssaultSetPrimaryTask(bot_t* pBot, bot_task* Task)
 
 			if (NumMarinesNearby < 1)
 			{
-				Task->TaskType = TASK_BUILD;
-				Task->TaskTarget = Observatory;
-				Task->TaskLocation = Observatory->v.origin;
-				Task->bOrderIsUrgent = true;
+				TASK_SetBuildTask(pBot, Task, Observatory, true);
 				return;
 			}
 		}
@@ -267,18 +389,18 @@ void MarineAssaultSetPrimaryTask(bot_t* pBot, bot_task* Task)
 
 			if (NumMarinesNearby < 1)
 			{
-				Task->TaskType = TASK_BUILD;
-				Task->TaskTarget = Armoury;
-				Task->TaskLocation = Armoury->v.origin;
-				Task->bOrderIsUrgent = true;
+				TASK_SetBuildTask(pBot, Task, Armoury, true);
 				return;
 			}
 		}
 
-		Task->TaskType = TASK_ATTACK;
-		Task->TaskTarget = SiegedHive->edict;
-		Task->TaskLocation = SiegedHive->FloorLocation;
-		Task->bOrderIsUrgent = false;
+		if (Task->TaskType != TASK_ATTACK || Task->TaskTarget != SiegedHive->edict)
+		{
+			TASK_SetAttackTask(pBot, Task, SiegedHive->edict, false);
+			return;
+		}
+
+		
 		return;
 	}
 
@@ -297,7 +419,7 @@ void MarineAssaultSetPrimaryTask(bot_t* pBot, bot_task* Task)
 			{
 				Task->TaskType = TASK_GUARD;
 				Task->TaskLocation = WaitPoint;
-				Task->bOrderIsUrgent = false;
+				Task->bTaskIsUrgent = false;
 				Task->TaskLength = 30.0f;
 				return;
 			}
@@ -306,10 +428,7 @@ void MarineAssaultSetPrimaryTask(bot_t* pBot, bot_task* Task)
 		// Bot has a proper weapon equipped
 		if (!PlayerHasWeapon(pBot->pEdict, WEAPON_MARINE_MG))
 		{
-			Task->TaskType = TASK_ATTACK;
-			Task->TaskTarget = BuiltHive->edict;
-			Task->TaskLocation = BuiltHive->FloorLocation;
-			Task->bOrderIsUrgent = false;
+			TASK_SetAttackTask(pBot, Task, BuiltHive->edict, false);
 			return;
 		}
 	}
@@ -318,10 +437,7 @@ void MarineAssaultSetPrimaryTask(bot_t* pBot, bot_task* Task)
 
 	if (!FNullEnt(ResourceTower))
 	{
-		Task->TaskType = TASK_ATTACK;
-		Task->TaskTarget = ResourceTower;
-		Task->TaskLocation = ResourceTower->v.origin;
-		Task->bOrderIsUrgent = false;
+		TASK_SetAttackTask(pBot, Task, ResourceTower, false);
 		return;
 	}
 
@@ -332,9 +448,7 @@ void MarineAssaultSetPrimaryTask(bot_t* pBot, bot_task* Task)
 
 		if (NewMoveLocation != ZERO_VECTOR)
 		{
-			Task->TaskType = TASK_MOVE;
-			Task->TaskLocation = NewMoveLocation;
-			Task->bOrderIsUrgent = false;
+			TASK_SetMoveTask(pBot, Task, NewMoveLocation, false);
 			return;
 		}
 	}
@@ -350,10 +464,7 @@ void MarineSetSecondaryTask(bot_t* pBot, bot_task* Task)
 
 	if (!FNullEnt(UnbuiltStructure))
 	{
-		Task->TaskType = TASK_BUILD;
-		Task->TaskTarget = UnbuiltStructure;
-		Task->TaskLocation = UnbuiltStructure->v.origin;
-		Task->bOrderIsUrgent = true;
+		TASK_SetBuildTask(pBot, Task, UnbuiltStructure, true);
 		return;
 	}
 
@@ -371,10 +482,7 @@ void MarineSetSecondaryTask(bot_t* pBot, bot_task* Task)
 		// Always defend if it's critical structure regardless of distance
 		if (bCriticalStructure || UTIL_GetPhaseDistanceBetweenPointsSq(pBot->pEdict->v.origin, AttackedStructure->v.origin) <= sqrf(UTIL_MetresToGoldSrcUnits(30.0f)))
 		{
-			Task->TaskType = TASK_DEFEND;
-			Task->TaskTarget = AttackedStructure;
-			Task->TaskLocation = AttackedStructure->v.origin;
-			Task->bOrderIsUrgent = true;
+			TASK_SetDefendTask(pBot, Task, AttackedStructure, true);
 			return;
 		}
 	}
@@ -391,7 +499,7 @@ void MarineSetSecondaryTask(bot_t* pBot, bot_task* Task)
 			Task->TaskType = TASK_WELD;
 			Task->TaskTarget = HurtPlayer;
 			Task->TaskLocation = HurtPlayer->v.origin;
-			Task->bOrderIsUrgent = false;
+			Task->bTaskIsUrgent = false;
 			return;
 		}
 
@@ -403,7 +511,32 @@ void MarineSetSecondaryTask(bot_t* pBot, bot_task* Task)
 			Task->TaskType = TASK_WELD;
 			Task->TaskTarget = DamagedStructure;
 			Task->TaskLocation = DamagedStructure->v.origin;
-			Task->bOrderIsUrgent = false;
+			Task->bTaskIsUrgent = false;
+			return;
+		}
+	}
+}
+
+void MarineSetCombatModeSecondaryTask(bot_t* pBot, bot_task* Task)
+{
+	edict_t* AttackedStructure = UTIL_GetNearestUndefendedStructureOfTypeUnderAttack(pBot, STRUCTURE_ANY_MARINE_STRUCTURE);
+
+	if (!FNullEnt(AttackedStructure) && vDist2DSq(pBot->pEdict->v.origin, AttackedStructure->v.origin) <= sqrf(UTIL_MetresToGoldSrcUnits(15.0f)))
+	{
+		TASK_SetDefendTask(pBot, Task, AttackedStructure, true);
+		return;
+	}
+
+	if (PlayerHasWeapon(pBot->pEdict, WEAPON_MARINE_WELDER))
+	{
+		edict_t* HurtPlayer = UTIL_GetClosestPlayerNeedsHealing(pBot->pEdict->v.origin, pBot->pEdict->v.team, UTIL_MetresToGoldSrcUnits(10.0f), pBot->pEdict, true);
+
+		if (!FNullEnt(HurtPlayer) && HurtPlayer->v.armorvalue < GetPlayerMaxArmour(HurtPlayer))
+		{
+			Task->TaskType = TASK_WELD;
+			Task->TaskTarget = HurtPlayer;
+			Task->TaskLocation = HurtPlayer->v.origin;
+			Task->bTaskIsUrgent = false;
 			return;
 		}
 	}
@@ -420,10 +553,7 @@ void MarineSweeperSetSecondaryTask(bot_t* pBot, bot_task* Task)
 	{
 		if (UTIL_GetPhaseDistanceBetweenPointsSq(pBot->pEdict->v.origin, AttackedStructure->v.origin) <= sqrf(UTIL_MetresToGoldSrcUnits(30.0f)))
 		{
-			Task->TaskType = TASK_DEFEND;
-			Task->TaskTarget = AttackedStructure;
-			Task->TaskLocation = AttackedStructure->v.origin;
-			Task->bOrderIsUrgent = true;
+			TASK_SetDefendTask(pBot, Task, AttackedStructure, true);
 			return;
 		}
 	}
@@ -434,11 +564,7 @@ void MarineSweeperSetSecondaryTask(bot_t* pBot, bot_task* Task)
 
 	if (!FNullEnt(UnbuiltStructure))
 	{
-		UTIL_ClearBotTask(pBot, Task);
-		Task->TaskType = TASK_BUILD;
-		Task->TaskTarget = UnbuiltStructure;
-		Task->TaskLocation = UnbuiltStructure->v.origin;
-		Task->bOrderIsUrgent = true;
+		TASK_SetBuildTask(pBot, Task, UnbuiltStructure, true);
 		return;
 	}
 
@@ -454,7 +580,7 @@ void MarineSweeperSetSecondaryTask(bot_t* pBot, bot_task* Task)
 			Task->TaskType = TASK_WELD;
 			Task->TaskTarget = HurtPlayer;
 			Task->TaskLocation = HurtPlayer->v.origin;
-			Task->bOrderIsUrgent = false;
+			Task->bTaskIsUrgent = false;
 			return;
 		}
 
@@ -466,7 +592,7 @@ void MarineSweeperSetSecondaryTask(bot_t* pBot, bot_task* Task)
 			Task->TaskType = TASK_WELD;
 			Task->TaskTarget = DamagedStructure;
 			Task->TaskLocation = DamagedStructure->v.origin;
-			Task->bOrderIsUrgent = false;
+			Task->bTaskIsUrgent = false;
 			return;
 		}
 	}
@@ -486,10 +612,8 @@ void MarineCapperSetSecondaryTask(bot_t* pBot, bot_task* Task)
 
 		if (NumBuilders < 1)
 		{
-			Task->TaskType = TASK_BUILD;
-			Task->TaskTarget = UnbuiltStructure;
-			Task->TaskLocation = UnbuiltStructure->v.origin;
-			Task->bOrderIsUrgent = GetStructureTypeFromEdict(UnbuiltStructure) == STRUCTURE_MARINE_RESTOWER;
+			bool bIsUrgent = GetStructureTypeFromEdict(UnbuiltStructure) == STRUCTURE_MARINE_RESTOWER;
+			TASK_SetBuildTask(pBot, Task, UnbuiltStructure, bIsUrgent);
 			return;
 		}
 
@@ -510,11 +634,7 @@ void MarineCapperSetSecondaryTask(bot_t* pBot, bot_task* Task)
 
 	if (!FNullEnt(ResourceTower))
 	{
-		Task->TaskType = TASK_DEFEND;
-		Task->TaskTarget = ResourceTower;
-		Task->TaskLocation = UTIL_GetEntityGroundLocation(ResourceTower);
-		Task->bOrderIsUrgent = true;
-
+		TASK_SetDefendTask(pBot, Task, ResourceTower, true);
 		return;
 	}
 
@@ -528,7 +648,7 @@ void MarineCapperSetSecondaryTask(bot_t* pBot, bot_task* Task)
 			Task->TaskType = TASK_WELD;
 			Task->TaskTarget = DamagedStructure;
 			Task->TaskLocation = DamagedStructure->v.origin;
-			Task->bOrderIsUrgent = false;
+			Task->bTaskIsUrgent = false;
 			return;
 		}
 	}
@@ -547,9 +667,7 @@ void MarineAssaultSetSecondaryTask(bot_t* pBot, bot_task* Task)
 
 		if (NumBuilders < 1)
 		{
-			Task->TaskType = TASK_BUILD;
-			Task->TaskTarget = UnbuiltStructure;
-			Task->bOrderIsUrgent = true;
+			TASK_SetBuildTask(pBot, Task, UnbuiltStructure, true);
 			return;
 		}
 	}
@@ -562,9 +680,7 @@ void MarineAssaultSetSecondaryTask(bot_t* pBot, bot_task* Task)
 
 		if (Dist < sqrf(UTIL_MetresToGoldSrcUnits(30.0f)))
 		{
-			Task->TaskType = TASK_DEFEND;
-			Task->TaskTarget = AttackedPhaseGate;
-			Task->bOrderIsUrgent = true;
+			TASK_SetDefendTask(pBot, Task, AttackedPhaseGate, true);
 			return;
 		}
 	}
@@ -577,9 +693,7 @@ void MarineAssaultSetSecondaryTask(bot_t* pBot, bot_task* Task)
 
 		if (Dist < UTIL_MetresToGoldSrcUnits(20.0f))
 		{
-			Task->TaskType = TASK_DEFEND;
-			Task->TaskTarget = AttackedTurretFactory;
-			Task->bOrderIsUrgent = true;
+			TASK_SetDefendTask(pBot, Task, AttackedTurretFactory, true);
 			return;
 		}
 	}
@@ -652,8 +766,7 @@ void MarineAssaultSetSecondaryTask(bot_t* pBot, bot_task* Task)
 
 			if (NumPotentialDefenders < 1)
 			{
-				Task->TaskType = TASK_DEFEND;
-				Task->TaskTarget = ResourceTower;
+				TASK_SetDefendTask(pBot, Task, ResourceTower, false);
 				Task->TaskLength = 20.0f;
 				return;
 			}
@@ -677,19 +790,21 @@ bool MarineCombatThink(bot_t* pBot)
 		TrackedEnemyRef = &pBot->TrackedEnemies[pBot->CurrentEnemy];
 	}
 
-	int NavProfileIndex = UTIL_GetMoveProfileForBot(pBot, MOVESTYLE_NORMAL);
-
 	// ENEMY IS OUT OF SIGHT
 
 	if (!TrackedEnemyRef->bCurrentlyVisible && !UTIL_QuickTrace(pEdict, pBot->CurrentEyePosition, CurrentEnemy->v.origin))
 	{
+		edict_t* Armoury = UTIL_GetNearestStructureOfTypeInLocation(STRUCTURE_MARINE_ANYARMOURY, pBot->pEdict->v.origin, UTIL_MetresToGoldSrcUnits(50.0f), true, true);
 
-		// If we're out of primary ammo or badly hurt, then use opportunity to disengage and head to the nearest armoury to resupply
-		if ((BotGetCurrentWeaponClipAmmo(pBot) < BotGetCurrentWeaponMaxClipAmmo(pBot) && BotGetPrimaryWeaponAmmoReserve(pBot) == 0) || pBot->pEdict->v.health < 50.0f)
+		if (!FNullEnt(Armoury))
 		{
-			edict_t* Armoury = UTIL_GetNearestStructureOfTypeInLocation(STRUCTURE_MARINE_ANYARMOURY, pBot->pEdict->v.origin, UTIL_MetresToGoldSrcUnits(50.0f), true, true);
+			float Dist = vDist2DSq(Armoury->v.origin, pEdict->v.origin);
 
-			if (!FNullEnt(Armoury))
+			bool bShouldHeal = (pBot->pEdict->v.health < 50.0f || (pBot->pEdict->v.health < 100.0f && Dist <= sqrf(UTIL_MetresToGoldSrcUnits(10.0f))));
+			bool bNeedsAmmo = (BotGetCurrentWeaponClipAmmo(pBot) < BotGetCurrentWeaponMaxClipAmmo(pBot) && BotGetPrimaryWeaponAmmoReserve(pBot) == 0);
+
+			// If we're out of primary ammo or badly hurt, then use opportunity to disengage and head to the nearest armoury to resupply
+			if (bNeedsAmmo || bShouldHeal || bNeedsAmmo)
 			{
 				if (IsPlayerInUseRange(pBot->pEdict, Armoury))
 				{
@@ -703,6 +818,7 @@ bool MarineCombatThink(bot_t* pBot)
 				else
 				{
 					MoveTo(pBot, Armoury->v.origin, MOVESTYLE_NORMAL);
+					BotReloadWeapons(pBot);
 				}
 				return true;
 			}
@@ -714,257 +830,128 @@ bool MarineCombatThink(bot_t* pBot)
 
 	// ENEMY IS VISIBLE
 
-	pBot->DesiredCombatWeapon = BotMarineChooseBestWeapon(pBot, CurrentEnemy);
+	NSWeapon DesiredCombatWeapon = BotMarineChooseBestWeapon(pBot, CurrentEnemy);
+	NSWeapon PrimaryWeapon = GetBotMarinePrimaryWeapon(pBot);
 
-	// If LOS is blocked by an enemy structure or other enemy player, attack them anyway
-	edict_t* TracedEntity = UTIL_TraceEntity(pEdict, pBot->CurrentEyePosition, UTIL_GetCentreOfEntity(CurrentEnemy));
+	BotAttackResult LOSCheck = PerformAttackLOSCheck(pBot, DesiredCombatWeapon, CurrentEnemy);
 
-	if (!FNullEnt(TracedEntity) && TracedEntity != CurrentEnemy)
+	if (LOSCheck == ATTACK_SUCCESS)
 	{
-		if (TracedEntity->v.team != 0 && TracedEntity->v.team != pEdict->v.team)
+		BotShootTarget(pBot, DesiredCombatWeapon, CurrentEnemy);
+	}
+
+	float DistFromEnemy = vDist2DSq(pBot->pEdict->v.origin, CurrentEnemy->v.origin);
+
+	if (DesiredCombatWeapon != WEAPON_MARINE_KNIFE)
+	{
+		if (DistFromEnemy < sqrf(100.0f))
 		{
-			if (IsEdictStructure(TracedEntity))
-			{
-				BotAttackTarget(pBot, TracedEntity);
-				return true;
-			}
+			BotJump(pBot);
 		}
 	}
 
-	if (GetBotCurrentWeapon(pBot) != pBot->DesiredCombatWeapon) { return true; }
+	// We're going to have the marine always try and use their primary weapon, which means
+	// that they will try and put enough distance between themselves and the enemy to use it effectively,
+	// and retreat if they need to reload or are out of ammo
 
-	NSPlayerClass EnemyClass = GetPlayerClass(CurrentEnemy);
-	float DistFromEnemySq = vDist2DSq(pEdict->v.origin, CurrentEnemy->v.origin);
-	float MaxWeaponRange = GetMaxIdealWeaponRange(GetBotCurrentWeapon(pBot));
-	float MinWeaponRange = GetMinIdealWeaponRange(GetBotCurrentWeapon(pBot));
 
-	if (GetBotCurrentWeapon(pBot) != WEAPON_MARINE_KNIFE && BotGetCurrentWeaponClipAmmo(pBot) == 0)
+	// We are using our primary weapon right now (has ammo left in the clip)
+	if (DesiredCombatWeapon == PrimaryWeapon)
 	{
 		BotLookAt(pBot, CurrentEnemy);
-		pEdict->v.button |= IN_RELOAD;
-
-		Vector EnemyOrientation = UTIL_GetVectorNormal2D(pBot->pEdict->v.origin - CurrentEnemy->v.origin);
-
-		Vector RetreatLocation = pBot->pEdict->v.origin + (EnemyOrientation * 100.0f);
-
-		MoveTo(pBot, RetreatLocation, MOVESTYLE_NORMAL);
-
-		return true;
-	}
-
-	// If we're really low on ammo then retreat to the nearest armoury while continuing to engage
-	if (BotGetPrimaryWeaponClipAmmo(pBot) < BotGetPrimaryWeaponMaxClipSize(pBot) && BotGetPrimaryWeaponAmmoReserve(pBot) == 0 && BotGetSecondaryWeaponAmmoReserve(pBot) == 0)
-	{
-		edict_t* Armoury = UTIL_GetNearestStructureOfTypeInLocation(STRUCTURE_MARINE_ANYARMOURY, pBot->pEdict->v.origin, UTIL_MetresToGoldSrcUnits(50.0f), true, true);
-
-		if (!FNullEnt(Armoury))
-		{
-			if (IsPlayerInUseRange(pBot->pEdict, Armoury))
-			{
-				pBot->DesiredCombatWeapon = GetBotMarinePrimaryWeapon(pBot);
-
-				if (GetBotCurrentWeapon(pBot) == pBot->DesiredCombatWeapon)
-				{
-					BotUseObject(pBot, Armoury, true);
-				}
-
-				return true;
-			}
-			else
-			{
-				MoveTo(pBot, Armoury->v.origin, MOVESTYLE_NORMAL);
-			}
-		}
-
-		if (GetBotCurrentWeapon(pBot) == WEAPON_MARINE_KNIFE || BotGetPrimaryWeaponClipAmmo(pBot) > 0)
-		{
-			BotAttackTarget(pBot, CurrentEnemy);
-		}
-		return true;
-	}
-
-	if (EnemyClass == CLASS_GORGE || IsPlayerGestating(CurrentEnemy))
-	{
-		BotAttackTarget(pBot, CurrentEnemy);
-		if (DistFromEnemySq > sqrf(MaxWeaponRange))
-		{
+		if (LOSCheck == ATTACK_OUTOFRANGE)
+		{			
 			MoveTo(pBot, CurrentEnemy->v.origin, MOVESTYLE_NORMAL);
-		}
-		else
-		{
-
-			Vector EngagementLocation = pBot->BotNavInfo.TargetDestination;
-
-			float EngagementDist = vDist2DSq(EngagementLocation, CurrentEnemy->v.origin);
-
-			if (!EngagementLocation || EngagementDist > sqrf(MaxWeaponRange) || EngagementDist < sqrf(MinWeaponRange) || !UTIL_QuickTrace(pBot->pEdict, EngagementLocation + Vector(0.0f, 0.0f, 10.0f), CurrentEnemy->v.origin))
-			{
-				float MinMaxDiff = MaxWeaponRange - MinWeaponRange;
-
-				Vector EnemyOrientation = UTIL_GetVectorNormal2D(pBot->pEdict->v.origin - CurrentEnemy->v.origin);
-				float MidDist = MinWeaponRange + (MinMaxDiff * 0.5f);
-
-				Vector MidPoint = CurrentEnemy->v.origin + (EnemyOrientation * MidDist);
-
-				MidPoint = UTIL_ProjectPointToNavmesh(MidPoint, NavProfileIndex);
-
-				if (MidPoint != ZERO_VECTOR)
-				{
-					EngagementLocation = UTIL_GetRandomPointOnNavmeshInRadius(NavProfileIndex, MidPoint, MinMaxDiff);
-				}
-				else
-				{
-					EngagementLocation = UTIL_GetRandomPointOnNavmeshInRadius(NavProfileIndex, CurrentEnemy->v.origin, MinWeaponRange);
-				}
-
-				if (!UTIL_QuickTrace(pBot->pEdict, EngagementLocation + Vector(0.0f, 0.0f, 10.0f), CurrentEnemy->v.origin))
-				{
-					EngagementLocation = ZERO_VECTOR;
-				}
-			}
-
-			if (EngagementLocation != ZERO_VECTOR)
-			{
-				MoveTo(pBot, EngagementLocation, MOVESTYLE_NORMAL);
-			}
-
-		}
-
-		return true;
-	}
-
-	if (DistFromEnemySq > sqrf(MaxWeaponRange))
-	{
-		BotAttackTarget(pBot, CurrentEnemy);
-		MoveTo(pBot, CurrentEnemy->v.origin, MOVESTYLE_NORMAL);
-
-	}
-	else
-	{
-		if (DistFromEnemySq < sqrf(MinWeaponRange))
-		{
-			Vector CurrentBackOffLocation = pBot->BotNavInfo.TargetDestination;
-
-			if (!CurrentBackOffLocation || vDist2DSq(CurrentBackOffLocation, CurrentEnemy->v.origin) < sqrf(MinWeaponRange) || !UTIL_QuickTrace(pBot->pEdict, CurrentBackOffLocation + Vector(0.0f, 0.0f, 10.0f), CurrentEnemy->v.origin))
-			{
-
-				NavProfileIndex = UTIL_GetMoveProfileForBot(pBot, MOVESTYLE_NORMAL);
-
-				float MinMaxDiff = MaxWeaponRange - MinWeaponRange;
-
-				Vector EnemyOrientation = UTIL_GetVectorNormal2D(pBot->pEdict->v.origin - CurrentEnemy->v.origin);
-				float MidDist = MinWeaponRange + (MinMaxDiff * 0.5f);
-
-				Vector MidPoint = CurrentEnemy->v.origin + (EnemyOrientation * MidDist);
-
-				MidPoint = UTIL_ProjectPointToNavmesh(MidPoint, NavProfileIndex);
-
-				if (MidPoint != ZERO_VECTOR)
-				{
-					CurrentBackOffLocation = UTIL_GetRandomPointOnNavmeshInRadius(NavProfileIndex, MidPoint, MinMaxDiff);
-				}
-				else
-				{
-					CurrentBackOffLocation = UTIL_GetRandomPointOnNavmeshInRadius(NavProfileIndex, CurrentEnemy->v.origin, MinWeaponRange);
-				}
-			}
-
-			BotAttackTarget(pBot, CurrentEnemy);
-			MoveTo(pBot, CurrentBackOffLocation, MOVESTYLE_NORMAL);
-
-			if (DistFromEnemySq < sqrf(UTIL_MetresToGoldSrcUnits(1.0f)))
-			{
-				BotJump(pBot);
-			}
-
+			BotReloadWeapons(pBot);
 			return true;
 		}
 
-		Vector EnemyVelocity = UTIL_GetVectorNormal2D(CurrentEnemy->v.velocity);
-		Vector EnemyOrientation = UTIL_GetVectorNormal2D(pBot->pEdict->v.origin - CurrentEnemy->v.origin);
-
-		float MoveDot = UTIL_GetDotProduct2D(EnemyVelocity, EnemyOrientation);
-
-		// Enemy is coming at us
-		if (MoveDot > 0.0f)
+		// Note that we already do visibility checks above, so blocked here means there is another player or structure in the way
+		if (LOSCheck == ATTACK_BLOCKED)
 		{
-			if (!IsPlayerOnLadder(pBot->pEdict))
+			edict_t* TracedEntity = UTIL_TraceEntity(pEdict, pBot->CurrentEyePosition, UTIL_GetCentreOfEntity(CurrentEnemy));
+
+			// Just blast through an alien structure if it's in the way
+			if (!FNullEnt(TracedEntity) && TracedEntity != CurrentEnemy)
 			{
-
-				Vector RetreatLocation = pBot->pEdict->v.origin + (EnemyOrientation * 100.0f);
-
-				BotAttackTarget(pBot, CurrentEnemy);
-				MoveTo(pBot, RetreatLocation, MOVESTYLE_NORMAL);
+				if (TracedEntity->v.team != 0 && TracedEntity->v.team != pEdict->v.team)
+				{
+					BotShootTarget(pBot, DesiredCombatWeapon, TracedEntity);
+				}
 			}
-			else
+
+			float MinDesiredDist = GetMinIdealWeaponRange(DesiredCombatWeapon);
+
+			Vector EngagementLocation = pBot->BotNavInfo.TargetDestination;
+
+			float EngagementLocationDist = vDist2DSq(EngagementLocation, CurrentEnemy->v.origin);
+
+			if (!EngagementLocation || EngagementLocationDist < sqrf(MinDesiredDist) || PerformAttackLOSCheck(EngagementLocation + Vector(0.0f, 0.0f, 50.0f), DesiredCombatWeapon, CurrentEnemy) != ATTACK_SUCCESS)
 			{
-				Vector LadderTop = UTIL_GetNearestLadderTopPoint(pBot->pEdict);
-				Vector LadderBottom = UTIL_GetNearestLadderBottomPoint(pBot->pEdict);
+				int MoveProfile = UTIL_GetMoveProfileForBot(pBot, MOVESTYLE_NORMAL);
+				EngagementLocation = UTIL_GetRandomPointOnNavmeshInRadius(MoveProfile, pBot->pEdict->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));
 
-				Vector EnemyPointOnLine = vClosestPointOnLine(LadderBottom, LadderTop, CurrentEnemy->v.origin);
-
-				bool bGoDownLadder = (vDist3DSq(EnemyPointOnLine, LadderBottom) > vDist3DSq(EnemyPointOnLine, LadderTop));
-
-				Vector RetreatLocation = ZERO_VECTOR;
-
-				if (bGoDownLadder)
+				if (EngagementLocation != ZERO_VECTOR && PerformAttackLOSCheck(EngagementLocation + Vector(0.0f, 0.0f, 50.0f), DesiredCombatWeapon, CurrentEnemy) == ATTACK_SUCCESS)
 				{
-					RetreatLocation = UTIL_ProjectPointToNavmesh(LadderBottom);
+					MoveTo(pBot, EngagementLocation, MOVESTYLE_NORMAL);
 				}
-				else
-				{
-					RetreatLocation = UTIL_ProjectPointToNavmesh(LadderTop);
-				}
+			}
+			return true;
+		}
 
-				BotAttackTarget(pBot, CurrentEnemy);
-				MoveTo(pBot, RetreatLocation, MOVESTYLE_NORMAL);
+		if (LOSCheck == ATTACK_SUCCESS)
+		{
+			float MinDesiredDist = GetMinIdealWeaponRange(DesiredCombatWeapon);
+			Vector Orientation = UTIL_GetVectorNormal2D(CurrentEnemy->v.origin - pBot->pEdict->v.origin);
+
+			float EnemyMoveDot = UTIL_GetDotProduct2D(UTIL_GetVectorNormal2D(CurrentEnemy->v.velocity), -Orientation);
+
+			// Enemy is too close for comfort, or is moving towards us. Back up
+			if (DistFromEnemy < MinDesiredDist || EnemyMoveDot > 0.7f)
+			{
+				Vector RetreatLocation = pBot->CurrentFloorPosition - (Orientation * 50.0f);
+
+				if (UTIL_PointIsDirectlyReachable(pBot->CurrentFloorPosition, RetreatLocation))
+				{
+					MoveDirectlyTo(pBot, RetreatLocation);
+				}
+			}
+		}
+
+		return true;
+	}
+
+	// Retreat and try to reload so we can use our primary weapon again
+	if (LOSCheck != ATTACK_SUCCESS)
+	{
+		edict_t* Armoury = UTIL_GetNearestStructureOfTypeInLocation(STRUCTURE_MARINE_ANYARMOURY, pBot->pEdict->v.origin, UTIL_MetresToGoldSrcUnits(50.0f), true, true);
+
+		Vector RetreatLocation = ZERO_VECTOR;
+
+		if (!FNullEnt(Armoury))
+		{
+			RetreatLocation = Armoury->v.origin;
+
+			if (BotGetPrimaryWeaponAmmoReserve(pBot) < BotGetPrimaryWeaponMaxClipSize(pBot))
+			{
+				if (IsPlayerInUseRange(pBot->pEdict, Armoury))
+				{
+					BotUseObject(pBot, Armoury, true);
+				}
 			}
 		}
 		else
 		{
-			if (!IsPlayerOnLadder(pBot->pEdict))
-			{
-				NavProfileIndex = UTIL_GetMoveProfileForBot(pBot, MOVESTYLE_NORMAL);
-
-				Vector EngagementLocation = pBot->BotNavInfo.TargetDestination;
-
-				float EngagementDist = vDist2DSq(EngagementLocation, CurrentEnemy->v.origin);
-
-				if (!EngagementLocation || EngagementDist > sqrf(MaxWeaponRange) || EngagementDist < sqrf(MinWeaponRange) || !UTIL_QuickTrace(pBot->pEdict, EngagementLocation + Vector(0.0f, 0.0f, 10.0f), CurrentEnemy->v.origin))
-				{
-					EngagementLocation = UTIL_GetRandomPointOnNavmeshInRadius(NavProfileIndex, pBot->pEdict->v.origin, UTIL_MetresToGoldSrcUnits(2.0f));
-				}
-
-				BotAttackTarget(pBot, CurrentEnemy);
-				MoveTo(pBot, EngagementLocation, MOVESTYLE_NORMAL);
-			}
-			else
-			{
-				Vector LadderTop = UTIL_GetNearestLadderTopPoint(pBot->pEdict);
-				Vector LadderBottom = UTIL_GetNearestLadderBottomPoint(pBot->pEdict);
-
-				Vector EnemyPointOnLine = vClosestPointOnLine(LadderBottom, LadderTop, CurrentEnemy->v.origin);
-
-				bool bGoDownLadder = (vDist3DSq(EnemyPointOnLine, LadderBottom) < vDist3DSq(EnemyPointOnLine, LadderTop));
-
-				Vector EngagementLocation = ZERO_VECTOR;
-
-				if (bGoDownLadder)
-				{
-					EngagementLocation = UTIL_ProjectPointToNavmesh(LadderBottom);
-				}
-				else
-				{
-					EngagementLocation = UTIL_ProjectPointToNavmesh(LadderTop);
-				}
-
-				BotAttackTarget(pBot, CurrentEnemy);
-				MoveTo(pBot, EngagementLocation, MOVESTYLE_NORMAL);
-			}
+			RetreatLocation = UTIL_GetCommChairLocation();
 
 		}
 
+		MoveTo(pBot, RetreatLocation, MOVESTYLE_NORMAL);
+
+		BotReloadWeapons(pBot);
 	}
+
+
 	return true;
 }
 
@@ -1004,14 +991,7 @@ void BotReceiveAttackOrder(bot_t* pBot, AvHUser3 TargetType, Vector destination)
 
 		if (NearestStructure)
 		{
-			pBot->CommanderTask.TaskType = TASK_ATTACK;
-			pBot->CommanderTask.TaskLocation = UTIL_GetFloorUnderEntity(NearestStructure);
-			pBot->CommanderTask.TaskTarget = NearestStructure;
-			pBot->CommanderTask.bTargetIsPlayer = false;
-
-		}
-		else
-		{
+			TASK_SetAttackTask(pBot, &pBot->CommanderTask, NearestStructure, false);
 			return;
 		}
 	}
@@ -1036,9 +1016,8 @@ void BotReceiveAttackOrder(bot_t* pBot, AvHUser3 TargetType, Vector destination)
 
 		if (NearestEnemy)
 		{
-			pBot->CommanderTask.TaskType = TASK_ATTACK;
-			pBot->CommanderTask.TaskTarget = NearestEnemy;
-			pBot->CommanderTask.bTargetIsPlayer = true;
+			TASK_SetAttackTask(pBot, &pBot->CommanderTask, NearestEnemy, false);
+			return;
 		}
 		else
 		{
@@ -1057,11 +1036,8 @@ void BotReceiveBuildOrder(bot_t* pBot, AvHUser3 TargetType, Vector destination)
 
 	if (NearestStructure)
 	{
-		pBot->CommanderTask.TaskType = TASK_BUILD;
-		pBot->CommanderTask.TaskLocation = UTIL_GetFloorUnderEntity(NearestStructure);
-		pBot->CommanderTask.TaskTarget = NearestStructure;
+		TASK_SetBuildTask(pBot, &pBot->CommanderTask, NearestStructure, false);
 		pBot->CommanderTask.bIssuedByCommander = true;
-		pBot->CommanderTask.bTargetIsPlayer = false;
 	}
 }
 
@@ -1071,15 +1047,12 @@ void BotReceiveMoveToOrder(bot_t* pBot, Vector destination)
 
 	if (ResNodeRef && vDist2DSq(ResNodeRef->origin, destination) < sqrf(UTIL_MetresToGoldSrcUnits(5.0f)))
 	{
-		pBot->CommanderTask.TaskType = TASK_CAP_RESNODE;
-		pBot->CommanderTask.StructureType = STRUCTURE_MARINE_RESTOWER;
-		pBot->CommanderTask.TaskLocation = ResNodeRef->origin;
+		TASK_SetCapResNodeTask(pBot, &pBot->CommanderTask, ResNodeRef, false);
 		
 	}
 	else
 	{
-		pBot->CommanderTask.TaskType = TASK_MOVE;
-		pBot->CommanderTask.TaskLocation = destination;
+		TASK_SetMoveTask(pBot, &pBot->CommanderTask, destination, false);
 	}
 
 	pBot->CommanderTask.bIssuedByCommander = true;
@@ -1181,7 +1154,7 @@ void MarineHuntEnemy(bot_t* pBot, enemy_status* TrackedEnemy)
 	float TimeSinceLastSighting = (gpGlobals->time - LastSeenTime);
 
 	// If the enemy is being motion tracked, or the last seen time was within the last 5 seconds, and the suspected location is close enough, then throw a grenade!
-	if (PlayerHasWeapon(pBot->pEdict, WEAPON_MARINE_GRENADE) || (PlayerHasWeapon(pBot->pEdict, WEAPON_MARINE_GL) && (BotGetPrimaryWeaponClipAmmo(pBot) > 0 || BotGetPrimaryWeaponAmmoReserve(pBot) > 0)))
+	if (PlayerHasWeapon(pBot->pEdict, WEAPON_MARINE_GRENADE) || ((PlayerHasWeapon(pBot->pEdict, WEAPON_MARINE_GL) && (BotGetPrimaryWeaponClipAmmo(pBot) > 0 || BotGetPrimaryWeaponAmmoReserve(pBot) > 0))))
 	{
 		if (TimeSinceLastSighting < 5.0f && vDist3DSq(pBot->pEdict->v.origin, LastSeenLocation) <= sqrf(UTIL_MetresToGoldSrcUnits(10.0f)))
 		{
@@ -1205,7 +1178,7 @@ void MarineHuntEnemy(bot_t* pBot, enemy_status* TrackedEnemy)
 		{
 			if (vDist2DSq(pBot->pEdict->v.origin, LastSeenLocation) >= sqrf(UTIL_MetresToGoldSrcUnits(5.0f)))
 			{
-				pBot->pEdict->v.button |= IN_RELOAD;
+				BotReloadWeapons(pBot);
 			}
 		}
 		else
@@ -1213,7 +1186,7 @@ void MarineHuntEnemy(bot_t* pBot, enemy_status* TrackedEnemy)
 			float ReloadTime = BotGetCurrentWeaponClipAmmo(pBot) < (BotGetCurrentWeaponMaxClipAmmo(pBot) * 0.5f) ? 2.0f : 5.0f;
 			if (gpGlobals->time - LastSeenTime >= ReloadTime)
 			{
-				pBot->pEdict->v.button |= IN_RELOAD;
+				BotReloadWeapons(pBot);
 			}
 		}
 
@@ -1232,6 +1205,38 @@ void MarineHuntEnemy(bot_t* pBot, enemy_status* TrackedEnemy)
 	}
 
 	return;
+}
+
+void MarineCombatModeCheckWantsAndNeeds(bot_t* pBot)
+{
+	edict_t* NearestArmoury = UTIL_GetNearestStructureIndexOfType(pBot->pEdict->v.origin, STRUCTURE_MARINE_ANYARMOURY, UTIL_MetresToGoldSrcUnits(100.0f), true, IsPlayerMarine(pBot->pEdict));
+
+	if (FNullEnt(NearestArmoury) || pBot->WantsAndNeedsTask.TaskType != TASK_NONE) { return; }
+
+	bool bNeedsAmmoOrHealth = false;	
+
+	if (vDist2DSq(pBot->pEdict->v.origin, NearestArmoury->v.origin) < sqrf(UTIL_MetresToGoldSrcUnits(10.0f)))
+	{
+		bNeedsAmmoOrHealth = (BotGetPrimaryWeaponAmmoReserve(pBot) < BotGetPrimaryWeaponMaxClipSize(pBot) || BotGetSecondaryWeaponAmmoReserve(pBot) < BotGetSecondaryWeaponMaxClipSize(pBot) || pBot->pEdict->v.health < pBot->pEdict->v.max_health);
+	}
+	else
+	{
+		const hive_definition* Hive = UTIL_GetNearestHiveAtLocation(pBot->pEdict->v.origin);
+
+		bool bNearHive = (Hive && vDist2DSq(pBot->pEdict->v.origin, Hive->FloorLocation) <= sqrf(UTIL_MetresToGoldSrcUnits(10.0f)));
+
+		bNeedsAmmoOrHealth = (bNearHive) ? (BotGetPrimaryWeaponAmmoReserve(pBot) == 0 && BotGetPrimaryWeaponClipAmmo(pBot) == 0) : (pBot->pEdict->v.health < 50.0f || BotGetPrimaryWeaponAmmoReserve(pBot) == 0);
+	}
+
+	if (bNeedsAmmoOrHealth)
+	{
+		pBot->WantsAndNeedsTask.TaskType = TASK_RESUPPLY;
+		pBot->WantsAndNeedsTask.bTaskIsUrgent = false;
+		pBot->WantsAndNeedsTask.TaskLocation = NearestArmoury->v.origin;
+		pBot->WantsAndNeedsTask.TaskTarget = NearestArmoury;
+	}
+
+
 }
 
 void MarineCheckWantsAndNeeds(bot_t* pBot)
@@ -1263,7 +1268,7 @@ void MarineCheckWantsAndNeeds(bot_t* pBot)
 		if (HealthPackIndex)
 		{
 			pBot->WantsAndNeedsTask.TaskType = TASK_GET_HEALTH;
-			pBot->WantsAndNeedsTask.bOrderIsUrgent = true;
+			pBot->WantsAndNeedsTask.bTaskIsUrgent = true;
 			pBot->WantsAndNeedsTask.TaskLocation = HealthPackIndex->v.origin;
 			pBot->WantsAndNeedsTask.TaskTarget = HealthPackIndex;
 
@@ -1277,7 +1282,7 @@ void MarineCheckWantsAndNeeds(bot_t* pBot)
 			if (PhaseDist < UTIL_MetresToGoldSrcUnits(30.0f))
 			{
 				pBot->WantsAndNeedsTask.TaskType = TASK_RESUPPLY;
-				pBot->WantsAndNeedsTask.bOrderIsUrgent = true;
+				pBot->WantsAndNeedsTask.bTaskIsUrgent = true;
 				pBot->WantsAndNeedsTask.TaskLocation = NearestArmoury->v.origin;
 				pBot->WantsAndNeedsTask.TaskTarget = NearestArmoury;
 
@@ -1301,7 +1306,7 @@ void MarineCheckWantsAndNeeds(bot_t* pBot)
 				if (!UTIL_IsAnyHumanNearLocationWithoutSpecialWeapon(NewWeaponIndex->v.origin, UTIL_MetresToGoldSrcUnits(10.0f)))
 				{
 					pBot->WantsAndNeedsTask.TaskType = TASK_GET_WEAPON;
-					pBot->WantsAndNeedsTask.bOrderIsUrgent = false;
+					pBot->WantsAndNeedsTask.bTaskIsUrgent = false;
 					pBot->WantsAndNeedsTask.TaskLocation = NewWeaponIndex->v.origin;
 					pBot->WantsAndNeedsTask.TaskTarget = NewWeaponIndex;
 
@@ -1313,7 +1318,7 @@ void MarineCheckWantsAndNeeds(bot_t* pBot)
 				if (!FNullEnt(NearestArmoury) && PlayerHasEquipment(pBot->pEdict))
 				{
 					pBot->WantsAndNeedsTask.TaskType = TASK_GUARD;
-					pBot->WantsAndNeedsTask.bOrderIsUrgent = false;
+					pBot->WantsAndNeedsTask.bTaskIsUrgent = false;
 					pBot->WantsAndNeedsTask.TaskLocation = NearestArmoury->v.origin;
 					pBot->WantsAndNeedsTask.TaskTarget = NearestArmoury;
 
@@ -1336,7 +1341,7 @@ void MarineCheckWantsAndNeeds(bot_t* pBot)
 		if (AmmoPackIndex)
 		{
 			pBot->WantsAndNeedsTask.TaskType = TASK_GET_AMMO;
-			pBot->WantsAndNeedsTask.bOrderIsUrgent = BotGetPrimaryWeaponAmmoReserve(pBot) == 0;
+			pBot->WantsAndNeedsTask.bTaskIsUrgent = BotGetPrimaryWeaponAmmoReserve(pBot) == 0;
 			pBot->WantsAndNeedsTask.TaskLocation = AmmoPackIndex->v.origin;
 			pBot->WantsAndNeedsTask.TaskTarget = AmmoPackIndex;
 
@@ -1354,7 +1359,7 @@ void MarineCheckWantsAndNeeds(bot_t* pBot)
 			if (PhaseDist <= DistanceWillingToTravel)
 			{
 				pBot->WantsAndNeedsTask.TaskType = TASK_RESUPPLY;
-				pBot->WantsAndNeedsTask.bOrderIsUrgent = BotGetPrimaryWeaponAmmoReserve(pBot) == 0;
+				pBot->WantsAndNeedsTask.bTaskIsUrgent = BotGetPrimaryWeaponAmmoReserve(pBot) == 0;
 				pBot->WantsAndNeedsTask.TaskLocation = NearestArmoury->v.origin;
 				pBot->WantsAndNeedsTask.TaskTarget = NearestArmoury;
 
@@ -1375,7 +1380,7 @@ void MarineCheckWantsAndNeeds(bot_t* pBot)
 				if (!UTIL_IsAnyHumanNearLocationWithoutWeapon(WEAPON_MARINE_WELDER, WelderIndex->v.origin, UTIL_MetresToGoldSrcUnits(5.0f)))
 				{
 					pBot->WantsAndNeedsTask.TaskType = TASK_GET_WEAPON;
-					pBot->WantsAndNeedsTask.bOrderIsUrgent = false;
+					pBot->WantsAndNeedsTask.bTaskIsUrgent = false;
 					pBot->WantsAndNeedsTask.TaskLocation = WelderIndex->v.origin;
 					pBot->WantsAndNeedsTask.TaskTarget = WelderIndex;
 
@@ -1402,7 +1407,7 @@ void MarineCheckWantsAndNeeds(bot_t* pBot)
 				{
 
 					pBot->WantsAndNeedsTask.TaskType = TASK_GET_EQUIPMENT;
-					pBot->WantsAndNeedsTask.bOrderIsUrgent = false;
+					pBot->WantsAndNeedsTask.bTaskIsUrgent = false;
 					pBot->WantsAndNeedsTask.TaskLocation = EquipmentIndex->v.origin;
 					pBot->WantsAndNeedsTask.TaskTarget = EquipmentIndex;
 
@@ -1416,7 +1421,7 @@ void MarineCheckWantsAndNeeds(bot_t* pBot)
 					if (!FNullEnt(NearestArmoury) && PlayerHasEquipment(pBot->pEdict))
 					{
 						pBot->WantsAndNeedsTask.TaskType = TASK_GUARD;
-						pBot->WantsAndNeedsTask.bOrderIsUrgent = false;
+						pBot->WantsAndNeedsTask.bTaskIsUrgent = false;
 						pBot->WantsAndNeedsTask.TaskLocation = NearestArmoury->v.origin;
 						pBot->WantsAndNeedsTask.TaskTarget = NearestArmoury;
 
@@ -1430,6 +1435,18 @@ void MarineCheckWantsAndNeeds(bot_t* pBot)
 			return;
 		}
 	}
+}
+
+BotRole MarineGetBestCombatModeRole(const bot_t* pBot)
+{
+	int NumDefenders = GAME_GetBotsWithRoleType(BOT_ROLE_SWEEPER, MARINE_TEAM, pBot->pEdict);
+
+	if (NumDefenders < 1)
+	{
+		return BOT_ROLE_SWEEPER;
+	}
+
+	return BOT_ROLE_ASSAULT;
 }
 
 BotRole MarineGetBestBotRole(const bot_t* pBot)
@@ -1468,7 +1485,6 @@ BotRole MarineGetBestBotRole(const bot_t* pBot)
 	{
 		return BOT_ROLE_SWEEPER;
 	}
-
 
 	int NumPlayersOnTeam = GAME_GetNumPlayersOnTeam(MARINE_TEAM);
 
@@ -1512,4 +1528,123 @@ BotRole MarineGetBestBotRole(const bot_t* pBot)
 	}
 
 	return BOT_ROLE_ASSAULT;
+}
+
+void OnMarineLevelUp(bot_t* pBot)
+{
+	if (pBot->BotNextCombatUpgrade == COMBAT_MARINE_UPGRADE_NONE)
+	{
+		pBot->BotNextCombatUpgrade = (int)MarineGetNextCombatUpgrade(pBot);
+	}
+
+	int cost = GetMarineCombatUpgradeCost((CombatModeMarineUpgrade)pBot->BotNextCombatUpgrade);
+
+	if (pBot->NumUpgradePoints >= cost)
+	{
+		pBot->pEdict->v.impulse = GetImpulseForMarineCombatUpgrade((CombatModeMarineUpgrade)pBot->BotNextCombatUpgrade);
+		pBot->CombatUpgradeMask |= pBot->BotNextCombatUpgrade;
+		pBot->NumUpgradePoints -= cost;
+
+		pBot->BotNextCombatUpgrade = (int)MarineGetNextCombatUpgrade(pBot);
+	}
+}
+
+CombatModeMarineUpgrade MarineGetNextCombatUpgrade(bot_t* pBot)
+{
+
+	if (pBot->CurrentRole == BOT_ROLE_SWEEPER)
+	{
+		if (!PlayerHasWeapon(pBot->pEdict, WEAPON_MARINE_WELDER))
+		{
+			return COMBAT_MARINE_UPGRADE_WELDER;
+		}
+
+		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_ARMOUR1))
+		{
+			return COMBAT_MARINE_UPGRADE_ARMOUR1;
+		}
+
+		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_DAMAGE1))
+		{
+			return COMBAT_MARINE_UPGRADE_DAMAGE1;
+		}
+
+		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_SHOTGUN))
+		{
+			return COMBAT_MARINE_UPGRADE_SHOTGUN;
+		}
+
+		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_DAMAGE2))
+		{
+			return COMBAT_MARINE_UPGRADE_DAMAGE2;
+		}
+
+		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_ARMOUR2))
+		{
+			return COMBAT_MARINE_UPGRADE_ARMOUR2;
+		}
+
+		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_HEAVYARMOUR))
+		{
+			return COMBAT_MARINE_UPGRADE_HEAVYARMOUR;
+		}
+
+		if (randbool())
+		{
+			return COMBAT_MARINE_UPGRADE_ARMOUR3;
+		}
+		else
+		{
+			return COMBAT_MARINE_UPGRADE_DAMAGE3;
+		}
+
+	}
+
+	if (pBot->CurrentRole == BOT_ROLE_ASSAULT)
+	{
+
+		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_ARMOUR1))
+		{
+			return COMBAT_MARINE_UPGRADE_ARMOUR1;
+		}
+
+		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_DAMAGE1))
+		{
+			return COMBAT_MARINE_UPGRADE_DAMAGE1;
+		}
+
+		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_GRENADE))
+		{
+			return COMBAT_MARINE_UPGRADE_GRENADE;
+		}
+
+		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_SHOTGUN))
+		{
+			return COMBAT_MARINE_UPGRADE_SHOTGUN;
+		}
+
+		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_HMG))
+		{
+			return COMBAT_MARINE_UPGRADE_HMG;
+		}
+
+		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_DAMAGE2))
+		{
+			return COMBAT_MARINE_UPGRADE_DAMAGE2;
+		}
+
+		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_ARMOUR2))
+		{
+			return COMBAT_MARINE_UPGRADE_ARMOUR2;
+		}
+
+		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_HEAVYARMOUR))
+		{
+			return COMBAT_MARINE_UPGRADE_HEAVYARMOUR;
+		}
+
+	}
+
+	return COMBAT_MARINE_UPGRADE_NONE;
+
 }
