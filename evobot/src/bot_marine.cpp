@@ -486,7 +486,7 @@ void MarineSetSecondaryTask(bot_t* pBot, bot_task* Task)
 
 	edict_t* UnbuiltStructure = UTIL_FindClosestMarineStructureUnbuiltWithoutBuilders(pBot, 2, pBot->pEdict->v.origin, UTIL_MetresToGoldSrcUnits(30.0f), true);
 
-	if (!FNullEnt(UnbuiltStructure))
+	if (!FNullEnt(UnbuiltStructure) && !UTIL_StructureIsRecycling(UnbuiltStructure))
 	{
 		TASK_SetBuildTask(pBot, Task, UnbuiltStructure, true);
 		return;
@@ -586,7 +586,7 @@ void MarineSweeperSetSecondaryTask(bot_t* pBot, bot_task* Task)
 
 	edict_t* UnbuiltStructure = UTIL_FindClosestMarineStructureUnbuilt(pBot->pEdict->v.origin, UTIL_MetresToGoldSrcUnits(30.0f), true);
 
-	if (!FNullEnt(UnbuiltStructure))
+	if (!FNullEnt(UnbuiltStructure) && !UTIL_StructureIsRecycling(UnbuiltStructure))
 	{
 		TASK_SetBuildTask(pBot, Task, UnbuiltStructure, true);
 		return;
@@ -628,7 +628,7 @@ void MarineCapperSetSecondaryTask(bot_t* pBot, bot_task* Task)
 
 	edict_t* UnbuiltStructure = UTIL_FindClosestMarineStructureUnbuilt(pBot->pEdict->v.origin, UTIL_MetresToGoldSrcUnits(10.0f), false);
 
-	if (!FNullEnt(UnbuiltStructure))
+	if (!FNullEnt(UnbuiltStructure) && !UTIL_StructureIsRecycling(UnbuiltStructure))
 	{
 		float Dist = vDist2D(pBot->pEdict->v.origin, UnbuiltStructure->v.origin) - 1.0f;
 
@@ -683,7 +683,7 @@ void MarineAssaultSetSecondaryTask(bot_t* pBot, bot_task* Task)
 
 	edict_t* UnbuiltStructure = UTIL_FindClosestMarineStructureUnbuilt(pBot->pEdict->v.origin, UTIL_MetresToGoldSrcUnits(10.0f), false);
 
-	if (!FNullEnt(UnbuiltStructure))
+	if (!FNullEnt(UnbuiltStructure) && !UTIL_StructureIsRecycling(UnbuiltStructure))
 	{
 		float Dist = vDist2D(pBot->pEdict->v.origin, UnbuiltStructure->v.origin) - 1.0f;
 
@@ -807,6 +807,7 @@ bool MarineCombatThink(bot_t* pBot)
 
 	edict_t* CurrentEnemy = pBot->TrackedEnemies[pBot->CurrentEnemy].EnemyEdict;
 	enemy_status* TrackedEnemyRef = &pBot->TrackedEnemies[pBot->CurrentEnemy];
+
 
 	// ENEMY IS OUT OF SIGHT
 
@@ -1190,7 +1191,24 @@ void MarineHuntEnemy(bot_t* pBot, enemy_status* TrackedEnemy)
 
 	if (BotGetCurrentWeaponClipAmmo(pBot) < BotGetCurrentWeaponMaxClipAmmo(pBot) && BotGetCurrentWeaponReserveAmmo(pBot) > 0)
 	{
-		
+
+//this was all removed by NEO, idk why
+		//if (TrackedEnemy->bIsTracked)
+		//{
+		//	if (vDist2DSq(pBot->pEdict->v.origin, LastSeenLocation) >= sqrf(UTIL_MetresToGoldSrcUnits(5.0f)))
+		//	{
+		//		BotReloadWeapons(pBot);
+		//	}
+		//}
+		//else
+		//{
+		//	float ReloadTime = BotGetCurrentWeaponClipAmmo(pBot) < (BotGetCurrentWeaponMaxClipAmmo(pBot) * 0.5f) ? 2.0f : 5.0f;
+		//	if (gpGlobals->time - LastSeenTime >= ReloadTime)
+		//	{
+		//		BotReloadWeapons(pBot);
+		//	}
+		//}
+
 
 	}
 
@@ -1202,6 +1220,38 @@ void MarineHuntEnemy(bot_t* pBot, enemy_status* TrackedEnemy)
 	}
 	
 	return;
+}
+
+void MarineCombatModeCheckWantsAndNeeds(bot_t* pBot)
+{
+	edict_t* NearestArmoury = UTIL_GetNearestStructureIndexOfType(pBot->pEdict->v.origin, STRUCTURE_MARINE_ANYARMOURY, UTIL_MetresToGoldSrcUnits(100.0f), true, IsPlayerMarine(pBot->pEdict));
+
+	if (FNullEnt(NearestArmoury) || pBot->WantsAndNeedsTask.TaskType != TASK_NONE) { return; }
+
+	bool bNeedsAmmoOrHealth = false;	
+
+	if (vDist2DSq(pBot->pEdict->v.origin, NearestArmoury->v.origin) < sqrf(UTIL_MetresToGoldSrcUnits(10.0f)))
+	{
+		bNeedsAmmoOrHealth = (BotGetPrimaryWeaponAmmoReserve(pBot) < BotGetPrimaryWeaponMaxClipSize(pBot) || BotGetSecondaryWeaponAmmoReserve(pBot) < BotGetSecondaryWeaponMaxClipSize(pBot) || pBot->pEdict->v.health < pBot->pEdict->v.max_health);
+	}
+	else
+	{
+		const hive_definition* Hive = UTIL_GetNearestHiveAtLocation(pBot->pEdict->v.origin);
+
+		bool bNearHive = (Hive && vDist2DSq(pBot->pEdict->v.origin, Hive->FloorLocation) <= sqrf(UTIL_MetresToGoldSrcUnits(10.0f)));
+
+		bNeedsAmmoOrHealth = (bNearHive) ? (BotGetPrimaryWeaponAmmoReserve(pBot) == 0 && BotGetPrimaryWeaponClipAmmo(pBot) == 0) : (pBot->pEdict->v.health < 50.0f || BotGetPrimaryWeaponAmmoReserve(pBot) == 0);
+	}
+
+	if (bNeedsAmmoOrHealth)
+	{
+		pBot->WantsAndNeedsTask.TaskType = TASK_RESUPPLY;
+		pBot->WantsAndNeedsTask.bTaskIsUrgent = false;
+		pBot->WantsAndNeedsTask.TaskLocation = NearestArmoury->v.origin;
+		pBot->WantsAndNeedsTask.TaskTarget = NearestArmoury;
+	}
+
+
 }
 
 void MarineCombatModeCheckWantsAndNeeds(bot_t* pBot)
@@ -1452,7 +1502,7 @@ BotRole MarineGetBestBotRole(const bot_t* pBot)
 
 	CommanderMode BotCommanderMode = CONFIG_GetCommanderMode();
 
-	if (BotCommanderMode != COMMANDERMODE_NEVER)
+	if (BotCommanderMode != COMMANDERMODE_NEVER && GAME_GetGameMode() != GAME_MODE_FADED)
 	{
 		if (!UTIL_IsThereACommander())
 		{
@@ -1478,7 +1528,7 @@ BotRole MarineGetBestBotRole(const bot_t* pBot)
 	int NumDefenders = GAME_GetBotsWithRoleType(BOT_ROLE_SWEEPER, MARINE_TEAM, pBot->pEdict);
 
 	// One marine to play sweeper at all times
-	if (NumDefenders < 1)
+	if (NumDefenders < 1 && GAME_GetGameMode() != GAME_MODE_FADED)
 	{
 		return BOT_ROLE_SWEEPER;
 	}
@@ -1527,6 +1577,7 @@ BotRole MarineGetBestBotRole(const bot_t* pBot)
 	return BOT_ROLE_ASSAULT;
 }
 
+
 CombatModeMarineUpgrade MarineGetNextCombatUpgrade(bot_t* pBot)
 {
 
@@ -1537,10 +1588,7 @@ CombatModeMarineUpgrade MarineGetNextCombatUpgrade(bot_t* pBot)
 			return COMBAT_MARINE_UPGRADE_WELDER;
 		}
 
-		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_ARMOUR1))
-		{
-			return COMBAT_MARINE_UPGRADE_ARMOUR1;
-		}
+
 
 		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_DAMAGE1))
 		{
@@ -1552,9 +1600,11 @@ CombatModeMarineUpgrade MarineGetNextCombatUpgrade(bot_t* pBot)
 			return COMBAT_MARINE_UPGRADE_SHOTGUN;
 		}
 
-		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_DAMAGE2))
+
+		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_ARMOUR1))
 		{
-			return COMBAT_MARINE_UPGRADE_DAMAGE2;
+			return COMBAT_MARINE_UPGRADE_ARMOUR1;
+
 		}
 
 		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_ARMOUR2))
@@ -1567,19 +1617,45 @@ CombatModeMarineUpgrade MarineGetNextCombatUpgrade(bot_t* pBot)
 			return COMBAT_MARINE_UPGRADE_HEAVYARMOUR;
 		}
 
-		if (randbool())
+
+		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_DAMAGE2))
+		{
+			return COMBAT_MARINE_UPGRADE_DAMAGE2;
+		}
+
+		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_ARMOUR3))
 		{
 			return COMBAT_MARINE_UPGRADE_ARMOUR3;
 		}
-		else
+
+		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_DAMAGE3))
+
 		{
 			return COMBAT_MARINE_UPGRADE_DAMAGE3;
+		}
+
+
+		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_CATALYST))
+		{
+			return COMBAT_MARINE_UPGRADE_CATALYST;
+		}
+
+		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_MOTIONTRACKING))
+		{
+			return COMBAT_MARINE_UPGRADE_MOTIONTRACKING;
 		}
 
 	}
 
 	if (pBot->CurrentRole == BOT_ROLE_ASSAULT)
 	{
+
+		//aggressive bots should take resupply to help sustain themselves
+		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_RESUPPLY))
+		{
+			return COMBAT_MARINE_UPGRADE_RESUPPLY;
+		}
+
 
 		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_ARMOUR1))
 		{
@@ -1619,6 +1695,32 @@ CombatModeMarineUpgrade MarineGetNextCombatUpgrade(bot_t* pBot)
 		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_HEAVYARMOUR))
 		{
 			return COMBAT_MARINE_UPGRADE_HEAVYARMOUR;
+		}
+
+
+		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_ARMOUR3))
+		{
+			return COMBAT_MARINE_UPGRADE_ARMOUR3;
+		}
+
+		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_DAMAGE3))
+		{
+			return COMBAT_MARINE_UPGRADE_DAMAGE3;
+		}
+
+		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_CATALYST))
+		{
+			return COMBAT_MARINE_UPGRADE_CATALYST;
+		}
+
+		if (!(pBot->CombatUpgradeMask & COMBAT_MARINE_UPGRADE_MOTIONTRACKING))
+		{
+			return COMBAT_MARINE_UPGRADE_MOTIONTRACKING;
+		}
+
+		if (!PlayerHasWeapon(pBot->pEdict, WEAPON_MARINE_WELDER))
+		{
+			return COMBAT_MARINE_UPGRADE_WELDER;
 		}
 
 	}

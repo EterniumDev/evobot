@@ -839,6 +839,11 @@ bool PlayerHasAlienUpgradeOfType(const edict_t* Player, const HiveTechStatus Tec
 
 float GetPlayerCloakAmount(const edict_t* Player)
 {
+	if (GAME_GetGameMode() == GAME_MODE_FADED)
+	{
+		return 0.0f;
+	}
+
 	if (!(Player->v.iuser4 & MASK_UPGRADE_7) && !(Player->v.iuser4 & MASK_SENSORY_NEARBY)) { return 0.0f; }
 
 	if (Player->v.iuser4 & MASK_VIS_SIGHTED)

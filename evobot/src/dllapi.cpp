@@ -46,6 +46,7 @@
 #include "general_util.h"
 #include "player_util.h"
 #include "bot_task.h"
+#include "bot_commander.h"
 
 extern int m_spriteTexture;
 
@@ -77,6 +78,125 @@ void ClientCommand(edict_t* pEntity)
 	const char* arg3 = CMD_ARGV(3);
 	const char* arg4 = CMD_ARGV(4);
 	const char* arg5 = CMD_ARGV(5);
+	
+	// commands that anyone else is allowed to use
+	if ((FStrEq(pcmd, "say") && FStrEq(arg1, "ammo")) || (FStrEq(pcmd, "say_team") && FStrEq(arg1, "ammo")))
+	{
+		bool CheckedTeams = false;
+
+		bot_t* BotRef = nullptr;
+		edict_t* BotEdict = nullptr;
+
+		for (int i = 0; i < 32; i++)
+		{
+			if (clients[i] && bots[i].is_used && IsPlayerCommander(clients[i])) //&& IsPlayerBot(clients[i])
+			{
+				//cant use GetBotPointer since it checks for FAKECLIENT and the commander does not have that flag
+				BotRef = GetBotPointerThirdParty(clients[i]);
+				BotEdict = clients[i];
+				
+			}
+		}
+
+		if (BotRef)
+		{
+			UTIL_SayText("bot\n", pEntity);
+			if (BotEdict)
+			{
+				UTIL_SayText("botEDICT\n", pEntity);
+
+				LOG_CONSOLE(PLID, "bot team %d player team was \n", BotEdict->v.team, pEntity->v.team);
+
+
+				if (BotEdict->v.team == pEntity->v.team)
+				{
+					UTIL_SayText("team passed\n", pEntity);
+
+					CheckedTeams = true;
+				}
+			}
+
+			if (CheckedTeams)
+			{
+				CommanderReceiveAmmoRequest(BotRef, pEntity);
+			}
+		}
+
+		return;
+	}
+
+	if ((FStrEq(pcmd, "say") && FStrEq(arg1, "med")) || (FStrEq(pcmd, "say_team") && FStrEq(arg1, "med")) || (FStrEq(pcmd, "say") && FStrEq(arg1, "heal")) || (FStrEq(pcmd, "say_team") && FStrEq(arg1, "heal")))
+	{
+		bool CheckedTeams = false;
+
+		bot_t* BotRef = nullptr;
+		edict_t* BotEdict = nullptr;
+
+		for (int i = 0; i < 32; i++)
+		{
+			if (clients[i] && bots[i].is_used && IsPlayerCommander(clients[i])) //&& IsPlayerBot(clients[i])
+			{
+				//cant use GetBotPointer since it checks for FAKECLIENT and the commander does not have that flag
+				//also apparently the bot doesnt have the THIRDPARTYBOT flag?
+				BotRef = GetBotPointerThirdParty(clients[i]);
+				BotEdict = clients[i];
+			}
+		}
+
+		if (BotRef)
+		{
+			if (BotEdict)
+			{
+				if (BotEdict->v.team == pEntity->v.team)
+				{
+					CheckedTeams = true;
+				}
+			}
+
+			if (CheckedTeams)
+			{
+				CommanderReceiveHealthRequest(BotRef, pEntity);
+			}
+		}
+
+		return;
+	}
+
+	if ((FStrEq(pcmd, "say") && FStrEq(arg1, "catalyst")) || (FStrEq(pcmd, "say_team") && FStrEq(arg1, "catalyst")) || (FStrEq(pcmd, "say") && FStrEq(arg1, "catpack")) || (FStrEq(pcmd, "say_team") && FStrEq(arg1, "catpack")) || (FStrEq(pcmd, "say") && FStrEq(arg1, "cat")) || (FStrEq(pcmd, "say_team") && FStrEq(arg1, "cat")))
+	{
+		bool CheckedTeams = false;
+
+		bot_t* BotRef = nullptr;
+		edict_t* BotEdict = nullptr;
+
+		for (int i = 0; i < 32; i++)
+		{
+			if (clients[i] && bots[i].is_used && IsPlayerCommander(clients[i])) //&& IsPlayerBot(clients[i])
+			{
+				//cant use GetBotPointer since it checks for FAKECLIENT and the commander does not have that flag
+				BotRef = GetBotPointerThirdParty(clients[i]);
+				BotEdict = clients[i];
+			}
+		}
+
+		if (BotRef)
+		{
+			if (BotEdict)
+			{
+				if (BotEdict->v.team == pEntity->v.team)
+				{
+					CheckedTeams = true;
+				}
+			}
+
+			if (CheckedTeams)
+			{
+				CommanderReceiveCatalystRequest(BotRef, pEntity);
+			}
+		}
+
+		return;
+	}
 
 	// only allow custom commands if deathmatch mode and NOT dedicated server and
 	// client sending command is the listen server client...
@@ -86,6 +206,40 @@ void ClientCommand(edict_t* pEntity)
 		return;
 	}
 
+	if (FStrEq(pcmd, "wipecommlog"))
+	{
+		for (int i = 0; i < gpGlobals->maxClients; i++)
+		{
+			//i guess this is how you're supposed to detect the bot commander
+			if (bots[i].is_used && bots[i].bot_ns_class == CLASS_MARINE_COMMANDER)  // not respawning
+			{
+				for (int Priority = 0; Priority < 10; Priority++)
+				{
+					for (int ActionIndex = 0; ActionIndex < 10; ActionIndex++)
+					{
+						if (bots[i].CurrentCommanderActions[Priority][ActionIndex].bIsActive)
+						{
+							commander_action* action = &bots[i].CurrentCommanderActions[Priority][ActionIndex];
+							
+							if (action)
+							{
+								action->ActionType = ACTION_NONE;
+							}
+						}
+					}
+				}
+			}
+		}
+
+		UTIL_SayText("Bot Commander Brain Wiped... Hopefully 100% less dumb now\n", pEntity);
+
+
+		RETURN_META(MRES_SUPERCEDE);
+	}
+
+	/*
+	
+	*/
 	if (FStrEq(pcmd, "drawobstacles"))
 	{
 		UTIL_DrawTemporaryObstacles();
@@ -126,6 +280,7 @@ void ClientCommand(edict_t* pEntity)
 				if (bots[i].is_used && !FNullEnt(bots[i].pEdict))
 				{
 					bots[i].pEdict->v.origin = Hit.vecEndPos + GetPlayerOriginOffsetFromFloor(bots[i].pEdict, false) + Vector(0.0f, 0.0f, 5.0f);
+					break;
 				}
 			}
 		}
@@ -134,6 +289,7 @@ void ClientCommand(edict_t* pEntity)
 	}
 
 	if (FStrEq(pcmd, "getgamemode"))
+		//bots think MVM is "none"
 	{
 		const char* GameMode = UTIL_GameModeToChar(GAME_GetGameMode());
 
@@ -444,7 +600,7 @@ void ClientCommand(edict_t* pEntity)
 		RETURN_META(MRES_SUPERCEDE);
 	}
 
-	if (FStrEq(pcmd, "printcommanderactions"))
+	if (FStrEq(pcmd, "printcommanderactions") || FStrEq(pcmd, "commlog"))
 	{
 		if (!NavmeshLoaded())
 		{

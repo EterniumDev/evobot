@@ -53,6 +53,7 @@ void BotReceiveGuardOrder(bot_t* pBot, AvHUser3 TargetType, Vector destination);
 void BotReceiveWeldOrder(bot_t* pBot, AvHUser3 TargetType, Vector destination);
 
 // Sets the bot's next desired combat upgrade to get / save for
+
 CombatModeMarineUpgrade MarineGetNextCombatUpgrade(bot_t* pBot);
 
 #endif

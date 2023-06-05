@@ -657,6 +657,16 @@ void CommanderReceiveHealthRequest(bot_t* pBot, edict_t* Requestor)
 	}
 }
 
+void CommanderReceiveCatalystRequest(bot_t* pBot, edict_t* Requestor)
+{
+	if (!Requestor) { return; }
+
+	for (int i = 0; i < 3; i++)
+	{
+		CommanderQueueItemDrop(pBot, ITEM_MARINE_CATALYSTS, ZERO_VECTOR, Requestor, 0);
+	}
+}
+
 void CommanderReceiveAmmoRequest(bot_t* pBot, edict_t* Requestor)
 {
 	if (!Requestor) { return; }
@@ -2359,8 +2369,14 @@ void CommanderQueueNextAction(bot_t* pBot)
 
 	int NumPlacedOrQueuedPortals = UTIL_GetNumPlacedOrQueuedStructuresOfType(pBot, STRUCTURE_MARINE_INFANTRYPORTAL);
 
+	int PortalsNeeded = 2;
+
+	int NumMarines = GAME_GetNumPlayersOnTeam(MARINE_TEAM);
+
+	PortalsNeeded = __max(PortalsNeeded, floorf(((float)NumMarines-1.0f)/2.0f));
+
 	// Only queue up one infantry portal at a time so the second one can be built next to the first rather than randomly scattered
-	if (NumPlacedOrQueuedPortals < 2 && UTIL_GetQueuedBuildRequestsOfType(pBot, STRUCTURE_MARINE_INFANTRYPORTAL) == 0)
+	if (NumPlacedOrQueuedPortals < PortalsNeeded && UTIL_GetQueuedBuildRequestsOfType(pBot, STRUCTURE_MARINE_INFANTRYPORTAL) == 0)
 	{
 		CommanderQueueInfantryPortalBuild(pBot, CurrentPriority);
 	}
@@ -2570,6 +2586,11 @@ void CommanderQueueNextAction(bot_t* pBot)
 	if (UTIL_MarineResearchIsAvailable(RESEARCH_PROTOTYPELAB_HEAVYARMOUR) && !UTIL_ResearchIsAlreadyQueued(pBot, RESEARCH_PROTOTYPELAB_HEAVYARMOUR))
 	{
 		CommanderQueueResearch(pBot, RESEARCH_PROTOTYPELAB_HEAVYARMOUR, CurrentPriority);
+	}
+
+	if (UTIL_MarineResearchIsAvailable(RESEARCH_ARMSLAB_CATALYSTS) && !UTIL_ResearchIsAlreadyQueued(pBot, RESEARCH_ARMSLAB_CATALYSTS))
+	{
+		CommanderQueueResearch(pBot, RESEARCH_ARMSLAB_CATALYSTS, CurrentPriority);
 	}
 
 	/* Next: Drop heavy armour loadouts */
@@ -2957,7 +2978,9 @@ void QueueHeavyArmourLoadout(bot_t* CommanderBot, const Vector Area, int Priorit
 
 	if (!PlayerHasSpecialWeapon(MarineNeedingLoadout))
 	{
-		NSWeapon SpecialWeapon = (UTIL_GetNumWeaponsOfTypeInPlay(WEAPON_MARINE_GL) == 0) ? WEAPON_MARINE_GL : WEAPON_MARINE_HMG;
+		//disable Grenade launchers since bots teamkill too much with it
+		//NSWeapon SpecialWeapon = (UTIL_GetNumWeaponsOfTypeInPlay(WEAPON_MARINE_GL) == 0) ? WEAPON_MARINE_GL : WEAPON_MARINE_HMG;
+		NSWeapon SpecialWeapon = WEAPON_MARINE_HMG;
 
 		NSDeployableItem SpecialWeaponItemType = UTIL_WeaponTypeToDeployableItem(SpecialWeapon);
 
@@ -3198,6 +3221,8 @@ bool UTIL_ItemCanBeDeployed(NSDeployableItem ItemToDeploy)
 		return UTIL_ResearchIsComplete(RESEARCH_PROTOTYPELAB_JETPACKS);
 	case ITEM_MARINE_SCAN:
 		return UTIL_ObservatoryResearchIsAvailable(RESEARCH_OBSERVATORY_SCAN);
+	case ITEM_MARINE_CATALYSTS:
+		return UTIL_ResearchIsComplete(RESEARCH_ARMSLAB_CATALYSTS);
 	default:
 		return false;
 	}

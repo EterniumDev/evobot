@@ -815,6 +815,12 @@ const char* UTIL_GameModeToChar(const NSGameMode GameMode)
 			return "Regular";
 		case GAME_MODE_COMBAT:
 			return "Combat";
+		case GAME_MODE_MVM:
+			return "MvM";
+		case GAME_MODE_AVA:
+			return "AvA";
+		case GAME_MODE_FADED:
+			return "Faded";
 		default:
 			return "None";
 	}
@@ -834,10 +840,24 @@ void GAME_OnGameStart()
 			bool bHiveExists = UTIL_FindEntityByClassname(NULL, "team_hive") != nullptr;
 			bool bCommChairExists = UTIL_FindEntityByClassname(NULL, "team_command") != nullptr;
 
-			if (bHiveExists && bCommChairExists)
+
+			float fadedValue = CVAR_GET_FLOAT("sv_fadedgamemode");
+			//this will be 0 on any versions that dont have Faded Gamemode built in, but if it is available and in use it will be 1 or more
+
+
+			if (fadedValue > 0)
+			{
+				CurrentGameMode = GAME_MODE_FADED;
+			}
+			else if (bHiveExists && bCommChairExists)
 			{
 				CurrentGameMode = GAME_MODE_REGULAR;
 			}
+			else if (bCommChairExists && !bHiveExists)
+			{
+				CurrentGameMode = GAME_MODE_MVM;
+			}
+
 		}
 		else if (!strncmp(theCStrLevelName, "co_", 3))
 		{
@@ -849,7 +869,8 @@ void GAME_OnGameStart()
 
 	if (!NavmeshLoaded()) { return; }
 
-	if (CurrentGameMode == GAME_MODE_REGULAR)
+
+	if (CurrentGameMode == GAME_MODE_REGULAR || CurrentGameMode == GAME_MODE_MVM)
 	{
 		UTIL_PopulateResourceNodeLocations();
 	}
@@ -987,7 +1008,7 @@ void EvoBot_ServerCommand(void)
 		}
 	}
 
-	if (FStrEq(arg1, "commandermode"))
+	if (FStrEq(arg1, "commandermode") || FStrEq(arg1, "com"))
 	{
 		const char* CommMode = CMD_ARGV(2);
 

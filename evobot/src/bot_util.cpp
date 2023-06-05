@@ -372,6 +372,25 @@ void BotKilledPlayer(bot_t* pBot, edict_t* victim)
 
 }
 
+
+bot_t* GetBotPointerThirdParty(const edict_t* pEdict)
+{
+	// If we aren't flagged as a fake client, then we can't be a bot
+	//apparently third party bot flag also not in use?
+	//if (!(pEdict->v.flags & FL_THIRDPARTYBOT)) { return nullptr; }
+
+	for (int index = 0; index < MAX_CLIENTS; index++)
+	{
+		if (bots[index].is_used && bots[index].pEdict == pEdict)
+		{
+			return &bots[index];
+		}
+	}
+
+	return nullptr;  // return NULL if edict is not a bot
+
+}
+
 bot_t* GetBotPointer(const edict_t* pEdict)
 {
 	// If we aren't flagged as a fake client, then we can't be a bot
@@ -481,6 +500,7 @@ BotAttackResult PerformAttackLOSCheck(bot_t* pBot, const NSWeapon Weapon, const 
 
 		return ATTACK_SUCCESS;
 	}
+
 
 	TraceResult hit;
 
@@ -711,6 +731,7 @@ void BotShootLocation(bot_t* pBot, NSWeapon AttackWeapon, const Vector TargetLoc
 	}
 }
 
+
 void BotShootTarget(bot_t* pBot, NSWeapon AttackWeapon, edict_t* Target)
 {
 	if (FNullEnt(Target) || (Target->v.deadflag != DEAD_NO)) { return; }
@@ -853,6 +874,7 @@ void BotShootTarget(bot_t* pBot, NSWeapon AttackWeapon, edict_t* Target)
 
 	Vector AimDir = UTIL_GetForwardVector(pBot->pEdict->v.v_angle);
 
+
 	if (AttackWeapon == WEAPON_LERK_SPORES || AttackWeapon == WEAPON_LERK_UMBRA)
 	{
 		if ((gpGlobals->time - pBot->current_weapon.LastFireTime) < pBot->current_weapon.MinRefireTime)
@@ -868,6 +890,7 @@ void BotShootTarget(bot_t* pBot, NSWeapon AttackWeapon, edict_t* Target)
 		if (Hit.flFraction >= 1.0f) { return; }
 
 		if (vDist3DSq(Hit.vecEndPos, Target->v.origin) <= sqrf(kSporeCloudRadius))
+
 		{
 			pBot->pEdict->v.button |= IN_ATTACK;
 			pBot->current_weapon.LastFireTime = gpGlobals->time;
@@ -889,6 +912,7 @@ void BotShootTarget(bot_t* pBot, NSWeapon AttackWeapon, edict_t* Target)
 			pBot->current_weapon.LastFireTime = gpGlobals->time;
 		}
 	}
+
 }
 
 void BotAttackTarget(bot_t* pBot, edict_t* Target)
@@ -1143,6 +1167,7 @@ void UTIL_ClearAllBotData(bot_t* pBot)
 	pBot->CombatLevel = 1;
 	pBot->CombatUpgradeMask = 0;
 
+
 	if (pBot->logFile)
 	{
 		fflush(pBot->logFile);
@@ -1372,6 +1397,7 @@ void BotUpdateDesiredViewRotation(bot_t* pBot)
 	{
 		pBot->ViewInterpolationSpeed *= 2.0f;
 	}
+
 
 
 	// We once again clamp everything to valid values in case the offsets we applied above took us above that
@@ -1675,6 +1701,14 @@ void BotThink(bot_t* pBot)
 			{
 				RegularModeThink(pBot);
 			}
+			else if (CurrentGameMode == GAME_MODE_MVM)
+			{
+				RegularModeThink(pBot);
+			}
+			else if (CurrentGameMode == GAME_MODE_FADED)
+			{
+				FadedModeThink(pBot);
+			}
 			else if (CurrentGameMode == GAME_MODE_COMBAT)
 			{
 				CombatModeThink(pBot);
@@ -1710,6 +1744,26 @@ void RegularModeThink(bot_t* pBot)
 
 	pBot->CurrentEnemy = BotGetNextEnemyTarget(pBot);
 	
+	if (pBot->CurrentEnemy > -1)
+	{
+		pBot->LastCombatTime = gpGlobals->time;
+	}
+
+	if (IsPlayerMarine(pBot->pEdict))
+	{
+		MarineThink(pBot);
+	}
+	else
+	{
+		AlienThink(pBot);
+	}
+}
+
+
+void FadedModeThink(bot_t* pBot)
+{
+	pBot->CurrentEnemy = BotGetNextEnemyTarget(pBot);
+
 	if (pBot->CurrentEnemy > -1)
 	{
 		pBot->LastCombatTime = gpGlobals->time;
@@ -1837,6 +1891,7 @@ int BotGetNextEnemyTarget(bot_t* pBot)
 	{
 		if (!pBot->TrackedEnemies[i].bIsAwareOfPlayer) { continue; }
 
+
 		enemy_status* TrackingInfo = &pBot->TrackedEnemies[i];
 
 		float Dist = vDist2DSq(TrackingInfo->LastSeenLocation, pBot->pEdict->v.origin);
@@ -1879,6 +1934,7 @@ void DroneThink(bot_t* pBot)
 	if (pBot->CurrentTask->TaskType != TASK_NONE)
 	{
 		BotProgressTask(pBot, pBot->CurrentTask);
+
 	}
 
 	//if (pBot->BotNavInfo.PathSize > 0)
@@ -1908,6 +1964,7 @@ void CustomThink(bot_t* pBot)
 	}
 
 	BotDrawPath(pBot, 0.0f, false);
+
 }
 
 void TestAimThink(bot_t* pBot)
@@ -2203,6 +2260,7 @@ void DEBUG_BotMeleeTarget(bot_t* pBot, edict_t* Target)
 	}
 }
 
+
 int GetMarineCombatUpgradeCost(const CombatModeMarineUpgrade Upgrade)
 {
 	switch (Upgrade)
@@ -2294,6 +2352,7 @@ int GetBotSpentCombatPoints(bot_t* pBot)
 	NumSpentPoints += NumUpgrades;
 
 	// Return the total amount of points they've spent!
+
 	return NumSpentPoints;
 }
 

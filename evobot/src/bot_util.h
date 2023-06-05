@@ -62,6 +62,7 @@ void BotJump(bot_t* pBot);
 void BotShootTarget(bot_t* pBot, NSWeapon AttackWeapon, edict_t* Target);
 void BotShootLocation(bot_t* pBot, NSWeapon AttackWeapon, const Vector TargetLocation);
 
+
 void BotAttackTarget(bot_t* pBot, edict_t* Target);
 
 BotAttackResult PerformAttackLOSCheck(bot_t* pBot, const NSWeapon Weapon, const edict_t* Target);
@@ -77,6 +78,7 @@ void BotTakeDamage(bot_t* pBot, int damageTaken, edict_t* aggressor);
 void BotDied(bot_t* pBot, edict_t* killer);
 void BotKilledPlayer(bot_t* pBot, edict_t* victim);
 
+bot_t* GetBotPointerThirdParty(const edict_t* pEdict);
 bot_t* GetBotPointer(const edict_t* pEdict);
 int GetBotIndex(edict_t* pEdict);
 
@@ -122,6 +124,8 @@ void BotThink(bot_t* pBot);
 
 // Called during the regular NS game mode
 void RegularModeThink(bot_t* pBot);
+// Called during the faded custom game mode
+void FadedModeThink(bot_t* pBot);
 // Called during the combat game mode
 void CombatModeThink(bot_t* pBot);
 // Called if there isn't a valid game mode in play (e.g. user has loaded non-NS map). Bots will randomly roam and attack enemies but nothing else
@@ -161,6 +165,7 @@ int GetImpulseForMarineCombatUpgrade(const CombatModeMarineUpgrade Upgrade);
 int GetImpulseForAlienCombatUpgrade(const CombatModeAlienUpgrade Upgrade);
 
 // If the observer is spectating a bot, it will return the bot reference (or nullptr if not spectating a bot)
+
 bot_t* UTIL_GetSpectatedBot(const edict_t* Observer);
 
 #endif
