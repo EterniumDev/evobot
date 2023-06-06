@@ -219,12 +219,7 @@ void ClientCommand(edict_t* pEntity)
 					{
 						if (bots[i].CurrentCommanderActions[Priority][ActionIndex].bIsActive)
 						{
-							commander_action* action = &bots[i].CurrentCommanderActions[Priority][ActionIndex];
-							
-							if (action)
-							{
-								action->ActionType = ACTION_NONE;
-							}
+							UTIL_ClearCommanderAction(&bots[i], ActionIndex, Priority);
 						}
 					}
 				}
