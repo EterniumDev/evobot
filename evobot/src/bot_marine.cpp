@@ -1222,37 +1222,6 @@ void MarineHuntEnemy(bot_t* pBot, enemy_status* TrackedEnemy)
 	return;
 }
 
-void MarineCombatModeCheckWantsAndNeeds(bot_t* pBot)
-{
-	edict_t* NearestArmoury = UTIL_GetNearestStructureIndexOfType(pBot->pEdict->v.origin, STRUCTURE_MARINE_ANYARMOURY, UTIL_MetresToGoldSrcUnits(100.0f), true, IsPlayerMarine(pBot->pEdict));
-
-	if (FNullEnt(NearestArmoury) || pBot->WantsAndNeedsTask.TaskType != TASK_NONE) { return; }
-
-	bool bNeedsAmmoOrHealth = false;	
-
-	if (vDist2DSq(pBot->pEdict->v.origin, NearestArmoury->v.origin) < sqrf(UTIL_MetresToGoldSrcUnits(10.0f)))
-	{
-		bNeedsAmmoOrHealth = (BotGetPrimaryWeaponAmmoReserve(pBot) < BotGetPrimaryWeaponMaxClipSize(pBot) || BotGetSecondaryWeaponAmmoReserve(pBot) < BotGetSecondaryWeaponMaxClipSize(pBot) || pBot->pEdict->v.health < pBot->pEdict->v.max_health);
-	}
-	else
-	{
-		const hive_definition* Hive = UTIL_GetNearestHiveAtLocation(pBot->pEdict->v.origin);
-
-		bool bNearHive = (Hive && vDist2DSq(pBot->pEdict->v.origin, Hive->FloorLocation) <= sqrf(UTIL_MetresToGoldSrcUnits(10.0f)));
-
-		bNeedsAmmoOrHealth = (bNearHive) ? (BotGetPrimaryWeaponAmmoReserve(pBot) == 0 && BotGetPrimaryWeaponClipAmmo(pBot) == 0) : (pBot->pEdict->v.health < 50.0f || BotGetPrimaryWeaponAmmoReserve(pBot) == 0);
-	}
-
-	if (bNeedsAmmoOrHealth)
-	{
-		pBot->WantsAndNeedsTask.TaskType = TASK_RESUPPLY;
-		pBot->WantsAndNeedsTask.bTaskIsUrgent = false;
-		pBot->WantsAndNeedsTask.TaskLocation = NearestArmoury->v.origin;
-		pBot->WantsAndNeedsTask.TaskTarget = NearestArmoury;
-	}
-
-
-}
 
 void MarineCombatModeCheckWantsAndNeeds(bot_t* pBot)
 {
