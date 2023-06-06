@@ -2186,18 +2186,29 @@ BotRole AlienGetBestBotRole(bot_t* pBot)
 
 	if (NumPlayersOnTeam == 0) { return BOT_ROLE_DESTROYER; } // Shouldn't ever happen but let's not risk a divide by zero later on...
 
-	// If we have enough resources, or nearly enough, and we don't have any fades already on the team then prioritise this
-	if (GetPlayerResources(pBot->pEdict) > ((float)kFadeEvolutionCost * 0.8f))
-	{
-		int NumFadesAndOnos = GAME_GetNumPlayersOnTeamOfClass(ALIEN_TEAM, CLASS_FADE) + GAME_GetNumPlayersOnTeamOfClass(ALIEN_TEAM, CLASS_ONOS);
-		int NumDestroyers = GAME_GetBotsWithRoleType(BOT_ROLE_DESTROYER, ALIEN_TEAM, pBot->pEdict);
-		int Existing = NumPlayersOnTeam - NumDestroyers;
+	int NumHarassers = GAME_GetBotsWithRoleType(BOT_ROLE_HARASS, ALIEN_TEAM, pBot->pEdict);
 
-		if (Existing > 0 && ((float)NumFadesAndOnos / (float)Existing < 0.33f))
+	if (NumHarassers < 1)
+	{
+		return BOT_ROLE_HARASS;
+	}
+	else
+	{
+		// If we have enough resources, or nearly enough, and we don't have any fades already on the team then prioritise this
+		if (GetPlayerResources(pBot->pEdict) > ((float)kFadeEvolutionCost * 0.8f))
 		{
-			return BOT_ROLE_DESTROYER;
+			int NumFadesAndOnos = GAME_GetNumPlayersOnTeamOfClass(ALIEN_TEAM, CLASS_FADE) + GAME_GetNumPlayersOnTeamOfClass(ALIEN_TEAM, CLASS_ONOS);
+			int NumDestroyers = GAME_GetBotsWithRoleType(BOT_ROLE_DESTROYER, ALIEN_TEAM, pBot->pEdict);
+			int Existing = NumPlayersOnTeam - NumDestroyers;
+
+			if (Existing > 0 && ((float)NumFadesAndOnos / (float)Existing < 0.33f))
+			{
+				return BOT_ROLE_DESTROYER;
+			}
 		}
 	}
+
+	
 
 	int NumTotalResNodes = UTIL_GetNumResNodes();
 
@@ -2250,6 +2261,8 @@ BotRole AlienGetBestBotRole(bot_t* pBot)
 			return BOT_ROLE_BUILDER;
 		}
 	}*/
+
+
 
 	int NumRequiredBuilders = CalcNumAlienBuildersRequired();
 	int NumBuilders = GAME_GetBotsWithRoleType(BOT_ROLE_BUILDER, ALIEN_TEAM, pBot->pEdict);
