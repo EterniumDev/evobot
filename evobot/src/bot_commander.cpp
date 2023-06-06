@@ -446,7 +446,7 @@ bool CommanderProgressOrderAction(bot_t* CommanderBot, int ActionIndex, int Prio
 		{
 			if (FreeResNodeIndex->bIsOccupied)
 			{
-				char buf[128];
+				char buf[512];
 				sprintf(buf, "Destroy the alien tower %s so I can put down one", STRING(PlayerEdict->v.netname));
 				BotTeamSay(CommanderBot, 2.0f, buf);
 			}
