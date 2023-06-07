@@ -758,6 +758,32 @@ void BotShootTarget(bot_t* pBot, NSWeapon AttackWeapon, edict_t* Target)
 		return;
 	}
 
+	if (AttackWeapon == WEAPON_LERK_SPORES || AttackWeapon == WEAPON_LERK_UMBRA)
+	{
+		BotLookAt(pBot, Target);
+		if ((gpGlobals->time - pBot->current_weapon.LastFireTime) < pBot->current_weapon.MinRefireTime)
+		{
+			return;
+		}
+
+		Vector AimDir = UTIL_GetForwardVector(pBot->pEdict->v.v_angle);
+
+		TraceResult Hit;
+		Vector TraceEnd = pBot->CurrentEyePosition + (AimDir * 3000.0f);
+
+		UTIL_TraceLine(pBot->CurrentEyePosition, TraceEnd, dont_ignore_monsters, dont_ignore_glass, pBot->pEdict->v.pContainingEntity, &Hit);
+
+		if (Hit.flFraction >= 1.0f) { return; }
+
+		if (vDist3DSq(Hit.vecEndPos, Target->v.origin) <= sqrf(kSporeCloudRadius))
+		{
+			pBot->pEdict->v.button |= IN_ATTACK;
+			pBot->current_weapon.LastFireTime = gpGlobals->time;
+		}
+
+		return;
+	}
+
 	// For charge and stomp, we can go through stuff so don't need to check for being blocked
 	if (CurrentWeapon == WEAPON_ONOS_CHARGE || CurrentWeapon == WEAPON_ONOS_STOMP)
 	{
@@ -874,7 +900,7 @@ void BotShootTarget(bot_t* pBot, NSWeapon AttackWeapon, edict_t* Target)
 
 	Vector AimDir = UTIL_GetForwardVector(pBot->pEdict->v.v_angle);
 
-
+//WE MAY NOT NEED THIS ANYMORE
 	if (AttackWeapon == WEAPON_LERK_SPORES || AttackWeapon == WEAPON_LERK_UMBRA)
 	{
 		if ((gpGlobals->time - pBot->current_weapon.LastFireTime) < pBot->current_weapon.MinRefireTime)
@@ -1434,6 +1460,8 @@ void BotUpdateView(bot_t* pBot)
 	// Updates the view frustum based on the bot's position and v_angle
 	BotUpdateViewFrustum(pBot);
 
+	bool bHasLOSToAnyEnemy = false;
+
 	// Update list of currently visible players
 	for (int i = 0; i < 32; i++)
 	{
@@ -1455,6 +1483,11 @@ void BotUpdateView(bot_t* pBot)
 
 		bool bInFOV = IsPlayerInBotFOV(pBot, Enemy);
 		bool bHasLOS = DoesBotHaveLOSToPlayer(pBot, Enemy);
+
+		if (bHasLOS)
+		{
+			bHasLOSToAnyEnemy = true;
+		}
 
 		float bot_reaction_time = (IsPlayerMarine(pBot->pEdict)) ? pBot->BotSkillSettings.marine_bot_reaction_time : pBot->BotSkillSettings.alien_bot_reaction_time;
 
@@ -1494,13 +1527,24 @@ void BotUpdateView(bot_t* pBot)
 
 			if (bHasLOS)
 			{
+				TrackingInfo->LastLOSPosition = pBot->pEdict->v.origin;
 				TrackingInfo->LastSeenTime = gpGlobals->time;
+
+				if (vDist2DSq(pBot->pEdict->v.origin, TrackingInfo->LastHiddenPosition) < sqrf(18.0f))
+				{
+					TrackingInfo->LastHiddenPosition = ZERO_VECTOR;
+				}
 				
 			}
 			else
 			{
-				TrackingInfo->LastHiddenPosition = pBot->CurrentFloorPosition;
+				TrackingInfo->LastHiddenPosition = pBot->pEdict->v.origin;
 				TrackingInfo->LastTrackedTime = gpGlobals->time;
+
+				if (vDist2DSq(pBot->pEdict->v.origin, TrackingInfo->LastLOSPosition) < sqrf(18.0f))
+				{
+					TrackingInfo->LastLOSPosition = ZERO_VECTOR;
+				}
 			}
 			
 
@@ -1509,11 +1553,20 @@ void BotUpdateView(bot_t* pBot)
 
 		if (bHasLOS)
 		{
-			TrackingInfo->LastLOSPosition = pBot->CurrentFloorPosition + Vector(0.0f, 0.0f, 5.0f);
+			TrackingInfo->LastLOSPosition = pBot->pEdict->v.origin;
+			if (vDist2DSq(pBot->pEdict->v.origin, TrackingInfo->LastHiddenPosition) < sqrf(18.0f))
+			{
+				TrackingInfo->LastHiddenPosition = ZERO_VECTOR;
+			}
 		}
 		else
 		{
-			TrackingInfo->LastHiddenPosition = pBot->CurrentFloorPosition;
+			TrackingInfo->LastHiddenPosition = pBot->pEdict->v.origin;
+
+			if (vDist2DSq(pBot->pEdict->v.origin, TrackingInfo->LastLOSPosition) < sqrf(18.0f))
+			{
+				TrackingInfo->LastLOSPosition = ZERO_VECTOR;
+			}
 		}
 
 		// If we've not been aware of the enemy's location for over 10 seconds, forget about them
@@ -1524,7 +1577,11 @@ void BotUpdateView(bot_t* pBot)
 			BotClearEnemyTrackingInfo(TrackingInfo);
 			continue;
 		}
+	}
 
+	if (!bHasLOSToAnyEnemy)
+	{
+		pBot->LastSafeLocation = pBot->pEdict->v.origin;
 	}
 }
 
