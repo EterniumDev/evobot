@@ -334,6 +334,38 @@ void AlienHarasserSetPrimaryTask(bot_t* pBot, bot_task* Task)
 		BotEvolveLifeform(pBot, CLASS_SKULK);
 	}
 
+	if (!IsPlayerFade(pBot->pEdict) && !IsPlayerOnos(pBot->pEdict))
+	{
+		if (pBot->resources >= kLerkEvolutionCost)
+		{
+			Vector EvolveLocation = ZERO_VECTOR;
+
+			const hive_definition* NearestHive = UTIL_GetNearestHiveOfStatus(pBot->pEdict->v.origin, HIVE_STATUS_BUILT);
+
+			if (NearestHive)
+			{
+				int MoveProfile = UTIL_GetMoveProfileForBot(pBot, MOVESTYLE_NORMAL);
+				EvolveLocation = FindClosestNavigablePointToDestination(MoveProfile, pBot->CurrentFloorPosition, NearestHive->FloorLocation, UTIL_MetresToGoldSrcUnits(10.0f));
+			}
+
+			if (EvolveLocation == ZERO_VECTOR)
+			{
+				EvolveLocation = pBot->pEdict->v.origin;
+			}
+
+			int NumLerks = GAME_GetNumPlayersOnTeamOfClass(ALIEN_TEAM, CLASS_LERK);
+
+			if (NumLerks < 2)
+			{
+				Task->TaskType = TASK_EVOLVE;
+				Task->Evolution = IMPULSE_ALIEN_EVOLVE_LERK;
+				Task->bTaskIsUrgent = true;
+				Task->TaskLocation = EvolveLocation;
+				return;
+			}
+		}
+	}
+
 	int NumMarineTowers = UTIL_GetStructureCountOfType(STRUCTURE_MARINE_RESTOWER);
 	int NumAlienTowers = UTIL_GetStructureCountOfType(STRUCTURE_ALIEN_RESTOWER);
 
