@@ -2489,7 +2489,7 @@ void CommanderQueueNextAction(bot_t* pBot)
 		}
 	}
 
-	if (UTIL_GetNumPlacedStructuresOfType(STRUCTURE_MARINE_RESTOWER) >= min_desired_resource_towers && UTIL_ItemCanBeDeployed(ITEM_MARINE_WELDER) && UTIL_GetNumWeaponsOfTypeInPlay(WEAPON_MARINE_WELDER) < 2 && UTIL_GetQueuedItemDropRequestsOfType(pBot, ITEM_MARINE_WELDER) == 0)
+	if (UTIL_GetNumPlacedStructuresOfType(STRUCTURE_MARINE_RESTOWER) >= min_desired_resource_towers && UTIL_ItemCanBeDeployed(ITEM_MARINE_WELDER) && UTIL_GetNumWeaponsOfTypeInPlay(WEAPON_MARINE_WELDER) < NumMarines && UTIL_GetQueuedItemDropRequestsOfType(pBot, ITEM_MARINE_WELDER) == 0)
 	{
 		edict_t* NearestArmoury = UTIL_GetNearestStructureOfTypeInLocation(STRUCTURE_MARINE_ANYARMOURY, UTIL_GetCommChairLocation(), UTIL_MetresToGoldSrcUnits(30.0f), true, false);
 

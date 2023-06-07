@@ -162,6 +162,56 @@ void ClientCommand(edict_t* pEntity)
 		return;
 	}
 
+	if ((FStrEq(pcmd, "say") && FStrEq(arg1, "welder")) || (FStrEq(pcmd, "say_team") && FStrEq(arg1, "welder")))
+	{
+		bool CheckedTeams = false;
+
+		bot_t* BotRef = nullptr;
+		edict_t* BotEdict = nullptr;
+
+		for (int i = 0; i < 32; i++)
+		{
+			if (clients[i] && bots[i].is_used && IsPlayerCommander(clients[i])) //&& IsPlayerBot(clients[i])
+			{
+				//cant use GetBotPointer since it checks for FAKECLIENT and the commander does not have that flag
+				//also apparently the bot doesnt have the THIRDPARTYBOT flag?
+				BotRef = GetBotPointerThirdParty(clients[i]);
+				BotEdict = clients[i];
+			}
+		}
+
+		if (BotRef)
+		{
+			if (BotEdict)
+			{
+				if (BotEdict->v.team == pEntity->v.team)
+				{
+					CheckedTeams = true;
+				}
+			}
+
+			if (CheckedTeams)
+			{
+				if (UTIL_GetNumPlacedStructuresOfType(STRUCTURE_MARINE_RESTOWER) >= min_desired_resource_towers && UTIL_ItemCanBeDeployed(ITEM_MARINE_WELDER) && UTIL_GetNumWeaponsOfTypeInPlay(WEAPON_MARINE_WELDER) < 2 && UTIL_GetQueuedItemDropRequestsOfType(BotRef, ITEM_MARINE_WELDER) == 0)
+				{
+					edict_t* NearestArmoury = UTIL_GetNearestStructureOfTypeInLocation(STRUCTURE_MARINE_ANYARMOURY, UTIL_GetCommChairLocation(), UTIL_MetresToGoldSrcUnits(30.0f), true, false);
+
+					if (!FNullEnt(NearestArmoury))
+					{
+						Vector NewWelderLocation = UTIL_GetRandomPointOnNavmeshInDonut(MARINE_REGULAR_NAV_PROFILE, NearestArmoury->v.origin, UTIL_MetresToGoldSrcUnits(2.0f), UTIL_MetresToGoldSrcUnits(3.0f));
+
+						if (NewWelderLocation != ZERO_VECTOR)
+						{
+							CommanderQueueItemDrop(BotRef, ITEM_MARINE_WELDER, NewWelderLocation, NULL, 1);
+						}
+					}
+				}
+			}
+		}
+
+		return;
+	}
+
 	if ((FStrEq(pcmd, "say") && FStrEq(arg1, "catalyst")) || (FStrEq(pcmd, "say_team") && FStrEq(arg1, "catalyst")) || (FStrEq(pcmd, "say") && FStrEq(arg1, "catpack")) || (FStrEq(pcmd, "say_team") && FStrEq(arg1, "catpack")) || (FStrEq(pcmd, "say") && FStrEq(arg1, "cat")) || (FStrEq(pcmd, "say_team") && FStrEq(arg1, "cat")))
 	{
 		bool CheckedTeams = false;
