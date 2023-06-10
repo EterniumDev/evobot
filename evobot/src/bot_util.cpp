@@ -475,6 +475,12 @@ BotAttackResult PerformAttackLOSCheck(bot_t* pBot, const NSWeapon Weapon, const 
 
 	if (Weapon == WEAPON_NONE) { return ATTACK_NOWEAPON; }
 
+	// Don't need aiming or special LOS checks for primal scream as it's AoE buff
+	if (Weapon == WEAPON_LERK_PRIMALSCREAM)
+	{
+		return ATTACK_SUCCESS;
+	}
+
 	// Add a LITTLE bit of give to avoid edge cases where the bot is a smidge out of range
 	float MaxWeaponRange = GetMaxIdealWeaponRange(Weapon) - 5.0f;
 
@@ -615,6 +621,32 @@ void BotShootLocation(bot_t* pBot, NSWeapon AttackWeapon, const Vector TargetLoc
 		return;
 	}
 
+	if (AttackWeapon == WEAPON_LERK_SPORES || AttackWeapon == WEAPON_LERK_UMBRA)
+	{
+		BotLookAt(pBot, TargetLocation);
+		if ((gpGlobals->time - pBot->current_weapon.LastFireTime) < pBot->current_weapon.MinRefireTime)
+		{
+			return;
+		}
+
+		Vector AimDir = UTIL_GetForwardVector(pBot->pEdict->v.v_angle);
+
+		TraceResult Hit;
+		Vector TraceEnd = pBot->CurrentEyePosition + (AimDir * 3000.0f);
+
+		UTIL_TraceLine(pBot->CurrentEyePosition, TraceEnd, dont_ignore_monsters, dont_ignore_glass, pBot->pEdict->v.pContainingEntity, &Hit);
+
+		if (Hit.flFraction >= 1.0f) { return; }
+
+		if (vDist3DSq(Hit.vecEndPos, TargetLocation) <= sqrf(kSporeCloudRadius))
+		{
+			pBot->pEdict->v.button |= IN_ATTACK;
+			pBot->current_weapon.LastFireTime = gpGlobals->time;
+		}
+
+		return;
+	}
+
 	// For charge and stomp, we can go through stuff so don't need to check for being blocked
 	if (CurrentWeapon == WEAPON_ONOS_CHARGE || CurrentWeapon == WEAPON_ONOS_STOMP)
 	{
@@ -747,7 +779,8 @@ void BotShootTarget(bot_t* pBot, NSWeapon AttackWeapon, edict_t* Target)
 
 	if (CurrentWeapon == WEAPON_NONE) { return; }
 
-	if (CurrentWeapon == WEAPON_SKULK_XENOCIDE)
+
+	if (CurrentWeapon == WEAPON_SKULK_XENOCIDE || CurrentWeapon == WEAPON_LERK_PRIMALSCREAM)
 	{
 		if ((gpGlobals->time - pBot->current_weapon.LastFireTime) >= pBot->current_weapon.MinRefireTime)
 		{
@@ -1462,6 +1495,8 @@ void BotUpdateView(bot_t* pBot)
 
 	bool bHasLOSToAnyEnemy = false;
 
+	int EnemyTeam = 0;
+
 	// Update list of currently visible players
 	for (int i = 0; i < 32; i++)
 	{
@@ -1471,6 +1506,8 @@ void BotUpdateView(bot_t* pBot)
 			BotClearEnemyTrackingInfo(&pBot->TrackedEnemies[i]);
 			continue;
 		}
+
+		EnemyTeam = clients[i]->v.team;
 
 		enemy_status* TrackingInfo = &pBot->TrackedEnemies[i];
 
@@ -1483,6 +1520,11 @@ void BotUpdateView(bot_t* pBot)
 
 		bool bInFOV = IsPlayerInBotFOV(pBot, Enemy);
 		bool bHasLOS = DoesBotHaveLOSToPlayer(pBot, Enemy);
+
+		if (pBot->LastSafeLocation != ZERO_VECTOR && UTIL_PlayerHasLOSToLocation(clients[i], pBot->LastSafeLocation, UTIL_MetresToGoldSrcUnits(50.0f)))
+		{
+			pBot->LastSafeLocation = ZERO_VECTOR;
+		}
 
 		if (bHasLOS)
 		{
@@ -1508,7 +1550,7 @@ void BotUpdateView(bot_t* pBot)
 
 		if (bIsRelevant && bInFOV && (bHasLOS || bIsTracked))
 		{
-			Vector BotLocation = UTIL_GetCentreOfEntity(Enemy);
+			Vector BotLocation = UTIL_GetFloorUnderEntity(Enemy);
 			Vector BotVelocity = Enemy->v.velocity;
 
 			if (gpGlobals->time >= TrackingInfo->NextVelocityUpdateTime)
@@ -1527,7 +1569,7 @@ void BotUpdateView(bot_t* pBot)
 
 			if (bHasLOS)
 			{
-				TrackingInfo->LastLOSPosition = pBot->pEdict->v.origin;
+				TrackingInfo->LastLOSPosition = pBot->CurrentFloorPosition + Vector(0.0f, 0.0f, 5.0f);
 				TrackingInfo->LastSeenTime = gpGlobals->time;
 
 				if (vDist2DSq(pBot->pEdict->v.origin, TrackingInfo->LastHiddenPosition) < sqrf(18.0f))
@@ -1538,7 +1580,7 @@ void BotUpdateView(bot_t* pBot)
 			}
 			else
 			{
-				TrackingInfo->LastHiddenPosition = pBot->pEdict->v.origin;
+				TrackingInfo->LastHiddenPosition = pBot->CurrentFloorPosition + Vector(0.0f, 0.0f, 5.0f);
 				TrackingInfo->LastTrackedTime = gpGlobals->time;
 
 				if (vDist2DSq(pBot->pEdict->v.origin, TrackingInfo->LastLOSPosition) < sqrf(18.0f))
@@ -1553,7 +1595,7 @@ void BotUpdateView(bot_t* pBot)
 
 		if (bHasLOS)
 		{
-			TrackingInfo->LastLOSPosition = pBot->pEdict->v.origin;
+			TrackingInfo->LastLOSPosition = pBot->CurrentFloorPosition + Vector(0.0f, 0.0f, 5.0f);
 			if (vDist2DSq(pBot->pEdict->v.origin, TrackingInfo->LastHiddenPosition) < sqrf(18.0f))
 			{
 				TrackingInfo->LastHiddenPosition = ZERO_VECTOR;
@@ -2002,7 +2044,7 @@ void DroneThink(bot_t* pBot)
 
 void CustomThink(bot_t* pBot)
 {
-	if (!IsPlayerLerk(pBot->pEdict)) { return; }
+	if (!IsPlayerSkulk(pBot->pEdict)) { return; }
 
 	pBot->CurrentEnemy = BotGetNextEnemyTarget(pBot);
 
@@ -2020,7 +2062,9 @@ void CustomThink(bot_t* pBot)
 		}
 	}
 
-	BotDrawPath(pBot, 0.0f, false);
+
+	//BotDrawPath(pBot, 0.0f, false);
+	UTIL_DrawLine(GAME_GetListenServerEdict(), pBot->pEdict->v.origin, pBot->pEdict->v.origin + (pBot->desiredMovementDir * 100.0f));
 
 }
 
@@ -2107,10 +2151,12 @@ void OnBotBeginGestation(bot_t* pBot)
 		if (pBot->BotNextCombatUpgrade > 0)
 		{
 			pBot->CombatUpgradeMask |= pBot->BotNextCombatUpgrade;
+			pBot->BotNextCombatUpgrade = COMBAT_ALIEN_UPGRADE_NONE;
+			return;
 		}
-		
-		pBot->BotNextCombatUpgrade = COMBAT_ALIEN_UPGRADE_NONE;
 	}
+
+
 }
 
 bool ShouldBotThink(const bot_t* bot)
