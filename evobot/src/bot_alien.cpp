@@ -1185,27 +1185,36 @@ void SkulkCombatThink(bot_t* pBot)
 
 	if (DistToEnemy < sqrf(UTIL_MetresToGoldSrcUnits(5.0f)))
 	{
+		Vector MoveTarget = CurrentEnemy->v.origin;
 
-		Vector EnemyFacing = UTIL_GetForwardVector2D(CurrentEnemy->v.angles);
-		Vector BotFacing = UTIL_GetVectorNormal2D(CurrentEnemy->v.origin - pBot->pEdict->v.origin);
-
-		float Dot = UTIL_GetDotProduct2D(EnemyFacing, BotFacing);
-
-		if (Dot < 0.0f || LOSCheck != ATTACK_SUCCESS)
+		if (TrackedEnemyRef->bHasLOS && DistToEnemy < sqrf(UTIL_MetresToGoldSrcUnits(2.0f)))
 		{
-			Vector TargetLocation = UTIL_GetFloorUnderEntity(CurrentEnemy);
-			Vector BehindPlayer = TargetLocation - (UTIL_GetForwardVector2D(CurrentEnemy->v.v_angle) * 50.0f);
+			Vector EnemyFacing = UTIL_GetForwardVector2D(CurrentEnemy->v.angles);
+			Vector BotFacing = UTIL_GetVectorNormal2D(CurrentEnemy->v.origin - pBot->pEdict->v.origin);
 
-			int NavProfileIndex = UTIL_GetMoveProfileForBot(pBot, MOVESTYLE_NORMAL);
+			float Dot = UTIL_GetDotProduct2D(EnemyFacing, BotFacing);
 
-			if (UTIL_PointIsReachable(NavProfileIndex, pBot->CurrentFloorPosition, BehindPlayer, 0.0f))
+			if (Dot < 0.0f || LOSCheck != ATTACK_SUCCESS)
 			{
-				MoveTo(pBot, BehindPlayer, MOVESTYLE_NORMAL);
-				return;
+
+				Vector TargetLocation = UTIL_GetFloorUnderEntity(CurrentEnemy);
+				Vector BehindPlayer = TargetLocation - (UTIL_GetForwardVector2D(CurrentEnemy->v.v_angle) * 50.0f);
+
+				int NavProfileIndex = UTIL_GetMoveProfileForBot(pBot, MOVESTYLE_NORMAL);
+
+				if (UTIL_PointIsReachable(NavProfileIndex, pBot->CurrentFloorPosition, BehindPlayer, 0.0f))
+				{
+					MoveTarget = BehindPlayer;
+				}
 			}
 		}
 
-		MoveTo(pBot, CurrentEnemy->v.origin, MOVESTYLE_NORMAL);
+		MoveTo(pBot, MoveTarget, MOVESTYLE_NORMAL);
+
+		if (TrackedEnemyRef->bHasLOS && DistToEnemy > sqrf(UTIL_MetresToGoldSrcUnits(3.0f)) && CanBotLeap(pBot) && UTIL_PointIsDirectlyReachable(pBot->CurrentFloorPosition, UTIL_GetFloorUnderEntity(CurrentEnemy)))
+		{
+			BotLeap(pBot, CurrentEnemy->v.origin);
+		}
 
 		return;
 	}
@@ -1224,6 +1233,13 @@ void SkulkCombatThink(bot_t* pBot)
 
 		if (TrackedEnemyRef->bHasLOS)
 		{
+
+			if (CanBotLeap(pBot) && UTIL_PointIsDirectlyReachable(pBot->CurrentFloorPosition, UTIL_GetFloorUnderEntity(CurrentEnemy)))
+			{
+				BotLeap(pBot, CurrentEnemy->v.origin);
+				return;
+			}
+
 			Vector EnemyFacing = UTIL_GetForwardVector2D(CurrentEnemy->v.angles);
 			Vector BotFacing = UTIL_GetVectorNormal2D(CurrentEnemy->v.origin - pBot->pEdict->v.origin);
 
@@ -1273,8 +1289,6 @@ void SkulkCombatThink(bot_t* pBot)
 	}
 
 	BotLookAt(pBot, TrackedEnemyRef->LastLOSPosition);
-	
-
 	
 }
 
@@ -1500,24 +1514,9 @@ void GorgeCombatThink(bot_t* pBot)
 
 	if (TrackedEnemyRef->bHasLOS)
 	{
-		BotLookAt(pBot, CurrentEnemy);
+		NSWeapon DesiredWeapon = GorgeGetBestWeaponForCombatTarget(pBot, CurrentEnemy);
 
-		if (GetBotCurrentWeapon(pBot) != WEAPON_GORGE_SPIT)
-		{
-			pBot->DesiredCombatWeapon = WEAPON_GORGE_SPIT;
-		}
-		else
-		{
-
-			Vector LineFrom = (pEdict->v.origin + pEdict->v.view_ofs);
-			Vector LineTo = LineFrom + (UTIL_GetForwardVector(pEdict->v.v_angle) * 1000.0f);
-			float dist = vDistanceFromLine2D(LineFrom, LineTo, pBot->LookTarget->v.origin);
-
-			if (dist < 30.0f)
-			{
-				pEdict->v.button |= IN_ATTACK;
-			}
-		}
+		BotShootTarget(pBot, DesiredWeapon, CurrentEnemy);
 	}
 	else
 	{
@@ -2434,6 +2433,12 @@ CombatModeAlienUpgrade AlienGetNextCombatUpgrade(bot_t* pBot)
 			return COMBAT_ALIEN_UPGRADE_REGENERATION;
 		}
 
+		// Bile bomb to help take down heavies
+		if (!(pBot->CombatUpgradeMask & COMBAT_ALIEN_UPGRADE_ABILITY3))
+		{
+			return COMBAT_ALIEN_UPGRADE_ABILITY3;
+		}
+
 		if (!(pBot->CombatUpgradeMask & COMBAT_ALIEN_UPGRADE_CELERITY))
 		{
 			return COMBAT_ALIEN_UPGRADE_CELERITY;
@@ -2452,11 +2457,6 @@ CombatModeAlienUpgrade AlienGetNextCombatUpgrade(bot_t* pBot)
 		if (!(pBot->CombatUpgradeMask & COMBAT_ALIEN_UPGRADE_REDEMPTION))
 		{
 			return COMBAT_ALIEN_UPGRADE_REDEMPTION;
-		}
-
-		if (!(pBot->CombatUpgradeMask & COMBAT_ALIEN_UPGRADE_ABILITY3))
-		{
-			return COMBAT_ALIEN_UPGRADE_ABILITY3;
 		}
 
 		return COMBAT_ALIEN_UPGRADE_NONE;
