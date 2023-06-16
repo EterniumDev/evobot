@@ -69,7 +69,7 @@ void AlienThink(bot_t* pBot)
 				return;
 			}
 		}
-	}	
+	}
 
 	if (pBot->CurrentTask && pBot->CurrentTask->TaskType != TASK_NONE)
 	{
@@ -240,7 +240,6 @@ void AlienSetCombatModeSecondaryTask(bot_t* pBot, bot_task* Task)
 			}
 		}
 
-
 		TASK_SetEvolveTask(pBot, Task, EvolvePosition, IMPULSE_ALIEN_EVOLVE_GORGE, true);
 		return;
 
@@ -266,7 +265,6 @@ void AlienSetCombatModeSecondaryTask(bot_t* pBot, bot_task* Task)
 				EvolvePosition = UTIL_GetRandomPointOnNavmeshInDonut(BotProfile, EvolvePosition, UTIL_MetresToGoldSrcUnits(3.0f), UTIL_MetresToGoldSrcUnits(5.0f));
 			}
 		}
-
 
 		TASK_SetEvolveTask(pBot, Task, EvolvePosition, IMPULSE_ALIEN_EVOLVE_LERK, true);
 		return;
@@ -294,15 +292,13 @@ void AlienSetCombatModeSecondaryTask(bot_t* pBot, bot_task* Task)
 			}
 		}
 
-
 		int EvolutionImpulse = Task->Evolution = IMPULSE_ALIEN_EVOLVE_FADE;
-
 
 		if ((pBot->CombatUpgradeMask & COMBAT_ALIEN_UPGRADE_ONOS) && GetBotAvailableCombatPoints(pBot) >= 4)
 		{
 			EvolutionImpulse = IMPULSE_ALIEN_EVOLVE_ONOS;
 		}
-		
+
 		TASK_SetEvolveTask(pBot, Task, EvolvePosition, EvolutionImpulse, true);
 		return;
 
@@ -331,15 +327,15 @@ void BotAlienSetCombatModePrimaryTask(bot_t* pBot, bot_task* Task)
 {
 	switch (pBot->CurrentRole)
 	{
-		case BOT_ROLE_BUILDER:
-			AlienBuilderSetCombatModePrimaryTask(pBot, Task);
-			break;
-		case BOT_ROLE_HARASS:
-			AlienHarasserSetCombatModePrimaryTask(pBot, Task);
-			break;
-		default:
-			AlienDestroyerSetCombatModePrimaryTask(pBot, Task);
-			break;
+	case BOT_ROLE_BUILDER:
+		AlienBuilderSetCombatModePrimaryTask(pBot, Task);
+		break;
+	case BOT_ROLE_HARASS:
+		AlienHarasserSetCombatModePrimaryTask(pBot, Task);
+		break;
+	default:
+		AlienDestroyerSetCombatModePrimaryTask(pBot, Task);
+		break;
 	}
 }
 
@@ -349,7 +345,6 @@ void AlienHarasserSetPrimaryTask(bot_t* pBot, bot_task* Task)
 	{
 		BotEvolveLifeform(pBot, CLASS_SKULK);
 	}
-
 
 	if (!IsPlayerLerk(pBot->pEdict))
 	{
@@ -487,12 +482,12 @@ bool IsAlienBuilderTaskNeeded(bot_t* pBot)
 	{
 		return true;
 	}
-	
+
 	if (UTIL_ActiveHiveWithTechExists(HiveTechTwo) && UTIL_GetStructureCountOfType(UTIL_GetChamberTypeForHiveTech(HiveTechTwo)) < 3)
 	{
 		return true;
 	}
-	
+
 	if (UTIL_ActiveHiveWithTechExists(HiveTechThree) && UTIL_GetStructureCountOfType(UTIL_GetChamberTypeForHiveTech(HiveTechThree)) < 3)
 	{
 		return true;
@@ -664,7 +659,7 @@ void AlienBuilderSetPrimaryTask(bot_t* pBot, bot_task* Task)
 				}
 			}
 
-			
+
 		}
 	}
 
@@ -708,7 +703,7 @@ void AlienBuilderSetPrimaryTask(bot_t* pBot, bot_task* Task)
 					TASK_SetBuildTask(pBot, Task, STRUCTURE_ALIEN_SENSORYCHAMBER, BuildLocation, false);
 					return;
 				}
-				
+
 			}
 		}
 	}
@@ -883,9 +878,7 @@ void AlienDestroyerSetPrimaryTask(bot_t* pBot, bot_task* Task)
 
 			if (pBot->resources >= kOnosEvolutionCost)
 			{
-
 				TASK_SetEvolveTask(pBot, Task, EvolveLocation, IMPULSE_ALIEN_EVOLVE_ONOS, true);
-
 				return;
 			}
 
@@ -893,7 +886,6 @@ void AlienDestroyerSetPrimaryTask(bot_t* pBot, bot_task* Task)
 
 			if (NumFades < 2)
 			{
-
 				TASK_SetEvolveTask(pBot, Task, EvolveLocation, IMPULSE_ALIEN_EVOLVE_FADE, true);
 				return;
 			}
@@ -902,7 +894,6 @@ void AlienDestroyerSetPrimaryTask(bot_t* pBot, bot_task* Task)
 
 	if (IsPlayerGorge(pBot->pEdict))
 	{
-
 		TASK_SetEvolveTask(pBot, Task, pBot->pEdict->v.origin, IMPULSE_ALIEN_EVOLVE_SKULK, true);
 		return;
 	}
@@ -1174,7 +1165,7 @@ void AlienDestroyerSetSecondaryTask(bot_t* pBot, bot_task* Task)
 		TASK_SetDefendTask(pBot, Task, Hive, true);
 		return;
 	}
-		
+
 	edict_t* ResourceTower = UTIL_GetNearestUndefendedStructureOfTypeUnderAttack(pBot, STRUCTURE_ALIEN_RESTOWER);
 
 	if (!FNullEnt(ResourceTower))
@@ -1220,7 +1211,6 @@ void SkulkCombatThink(bot_t* pBot)
 
 			if (Dot < 0.0f || LOSCheck != ATTACK_SUCCESS)
 			{
-
 				Vector TargetLocation = UTIL_GetFloorUnderEntity(CurrentEnemy);
 				Vector BehindPlayer = TargetLocation - (UTIL_GetForwardVector2D(CurrentEnemy->v.v_angle) * 50.0f);
 
@@ -1251,15 +1241,12 @@ void SkulkCombatThink(bot_t* pBot)
 	bool bHealingSourceIsStructure = (!FNullEnt(HealingSource)) ? IsEdictStructure(HealingSource) : false;
 
 	// If we have backup, or we're near a source of healing then charge in
-
-	if (NumFriends >= NumEnemyAllies || ( bHealingSourceIsStructure && vDist2DSq(CurrentEnemy->v.origin, HealingSource->v.origin) < sqrf(UTIL_MetresToGoldSrcUnits(10.0f)) ) )
-
+	if (NumFriends >= NumEnemyAllies || (bHealingSourceIsStructure && vDist2DSq(CurrentEnemy->v.origin, HealingSource->v.origin) < sqrf(UTIL_MetresToGoldSrcUnits(10.0f))))
 	{
 		MoveTo(pBot, CurrentEnemy->v.origin, MOVESTYLE_NORMAL);
 
 		if (TrackedEnemyRef->bHasLOS)
 		{
-
 			if (CanBotLeap(pBot) && UTIL_PointIsDirectlyReachable(pBot->CurrentFloorPosition, UTIL_GetFloorUnderEntity(CurrentEnemy)))
 			{
 				BotLeap(pBot, CurrentEnemy->v.origin);
@@ -1297,9 +1284,7 @@ void SkulkCombatThink(bot_t* pBot)
 	{
 		int MoveProfile = UTIL_GetMoveProfileForBot(pBot, MOVESTYLE_HIDE);
 
-
 		Vector EscapeLocation = ZERO_VECTOR;//pBot->LastSafeLocation;
-
 
 		if (!EscapeLocation)
 		{
@@ -1316,7 +1301,6 @@ void SkulkCombatThink(bot_t* pBot)
 		return;
 	}
 
-
 	if (TrackedEnemyRef->LastLOSPosition != ZERO_VECTOR)
 	{
 		BotLookAt(pBot, TrackedEnemyRef->LastSeenLocation);
@@ -1326,7 +1310,6 @@ void SkulkCombatThink(bot_t* pBot)
 
 	MoveTo(pBot, TrackedEnemyRef->LastSeenLocation, MOVESTYLE_AMBUSH);
 
-	
 }
 
 void FadeCombatThink(bot_t* pBot)
@@ -1352,7 +1335,7 @@ void FadeCombatThink(bot_t* pBot)
 	{
 		// TODO: Attack enemy if they're in trouble
 		float DesiredDistFromHealingSource = (IsEdictPlayer(NearestHealingSource)) ? UTIL_MetresToGoldSrcUnits(2.0f) : UTIL_MetresToGoldSrcUnits(5.0f);
-		
+
 		if (bLowOnHealth)
 		{
 			bool bOutOfEnemyLOS = UTIL_QuickTrace(pEdict, pBot->CurrentEyePosition, GetPlayerEyePosition(CurrentEnemy));
@@ -1434,7 +1417,7 @@ void FadeCombatThink(bot_t* pBot)
 			{
 				return;
 			}
-			
+
 		}
 		else
 		{
@@ -1503,7 +1486,7 @@ void FadeCombatThink(bot_t* pBot)
 				{
 					MoveTo(pBot, BehindPlayer, MOVESTYLE_NORMAL);
 					return;
-				}				
+				}
 			}
 		}
 
@@ -1744,7 +1727,7 @@ void LerkCombatThink(bot_t* pBot)
 					MoveTo(pBot, CurrentHealSpot, MOVESTYLE_NORMAL, DesiredDistFromHealingSource);
 					return;
 				}
-				
+
 			}
 		}
 
@@ -1752,7 +1735,7 @@ void LerkCombatThink(bot_t* pBot)
 
 	// How many allies does our target have providing cover? We don't want to charge in and get shot to pieces
 	int NumFriends = UTIL_GetNumPlayersOnTeamWithLOS(CurrentEnemy->v.origin, MARINE_TEAM, UTIL_MetresToGoldSrcUnits(30.0f), CurrentEnemy);
-	
+
 
 	// If the enemy is not visible
 	if (!TrackedEnemyRef->bHasLOS)
@@ -1771,9 +1754,7 @@ void LerkCombatThink(bot_t* pBot)
 			}
 			else
 			{
-
 				BotLookAt(pBot, TrackedEnemyRef->LastSeenLocation);
-
 
 				if (TrackedEnemyRef->LastLOSPosition != ZERO_VECTOR && vDist2DSq(CurrentEnemy->v.origin, TrackedEnemyRef->LastLOSPosition) < sqrf(UTIL_MetresToGoldSrcUnits(5.0f)) && UTIL_QuickTrace(pBot->pEdict, pBot->CurrentEyePosition, TrackedEnemyRef->LastLOSPosition) && !UTIL_IsAreaAffectedBySpores(TrackedEnemyRef->LastLOSPosition))
 				{
@@ -1818,14 +1799,14 @@ void LerkCombatThink(bot_t* pBot)
 		pBot->DesiredCombatWeapon = WEAPON_LERK_SPORES;
 
 		if (GetBotCurrentWeapon(pBot) == WEAPON_LERK_SPORES && (gpGlobals->time - pBot->current_weapon.LastFireTime >= pBot->current_weapon.MinRefireTime) && !UTIL_IsAreaAffectedBySpores(TrackedEnemyRef->LastSeenLocation))
-		{			
+		{
 			BotShootTarget(pBot, WEAPON_LERK_SPORES, TrackedEnemyRef->EnemyEdict);
 			return;
 		}
 
 		if (vDist2DSq(pBot->pEdict->v.origin, EscapeLocation) > sqrf(UTIL_MetresToGoldSrcUnits(10.0f)))
 		{
-			
+
 			MoveTo(pBot, EscapeLocation, MOVESTYLE_NORMAL);
 		}
 		else
@@ -2011,14 +1992,14 @@ void AlienCheckWantsAndNeeds(bot_t* pBot)
 	if (bLowOnHealth && !IsPlayerGorge(pBot->pEdict))
 	{
 		// Already getting health
-		if (pBot->WantsAndNeedsTask.TaskType == TASK_GET_HEALTH && (OverallHealthPercent > 0.35f || IsEdictStructure(pBot->WantsAndNeedsTask.TaskTarget)) )
+		if (pBot->WantsAndNeedsTask.TaskType == TASK_GET_HEALTH && (OverallHealthPercent > 0.35f || IsEdictStructure(pBot->WantsAndNeedsTask.TaskTarget)))
 		{
 			pBot->WantsAndNeedsTask.bTaskIsUrgent = true;
 			return;
 		}
 
 		edict_t* HealingSource = nullptr;
-		
+
 		// If we're REALLY low on health then go to the hive, don't try to heal at a gorge
 		if (OverallHealthPercent > 0.35f)
 		{
@@ -2300,7 +2281,6 @@ BotRole AlienGetBestBotRole(bot_t* pBot)
 
 	if (NumPlayersOnTeam == 0) { return BOT_ROLE_DESTROYER; } // Shouldn't ever happen but let's not risk a divide by zero later on...
 
-
 	// If we have enough resources, or nearly enough, and we don't have any fades already on the team then prioritise this
 	if (GetPlayerResources(pBot->pEdict) > ((float)kFadeEvolutionCost * 0.8f))
 	{
@@ -2310,13 +2290,11 @@ BotRole AlienGetBestBotRole(bot_t* pBot)
 		int NumDestroyers = GAME_GetBotsWithRoleType(BOT_ROLE_DESTROYER, ALIEN_TEAM, pBot->pEdict);
 		int Existing = NumPlayersOnTeam - NumDestroyers;
 
-			if (Existing > 0 && ((float)NumFadesAndOnos / (float)Existing < 0.33f))
-			{
-				return BOT_ROLE_DESTROYER;
-			}
+		if (Existing > 0 && ((float)NumFadesAndOnos / (float)Existing < 0.33f))
+		{
+			return BOT_ROLE_DESTROYER;
 		}
 	}
-
 
 	// If we have enough resources, or nearly enough, and we don't have any lerks already on the team then prioritise this
 	if (GetPlayerResources(pBot->pEdict) > ((float)kLerkEvolutionCost * 0.8f))
@@ -2329,7 +2307,6 @@ BotRole AlienGetBestBotRole(bot_t* pBot)
 			return BOT_ROLE_HARASS;
 		}
 	}
-
 
 	int NumTotalResNodes = UTIL_GetNumResNodes();
 
@@ -2386,7 +2363,7 @@ BotRole AlienGetBestBotRole(bot_t* pBot)
 		}
 	}
 
-	
+
 
 	return BOT_ROLE_DESTROYER;
 }
@@ -2480,7 +2457,7 @@ CombatModeAlienUpgrade AlienGetNextCombatUpgrade(bot_t* pBot)
 		return COMBAT_ALIEN_UPGRADE_CARAPACE;
 	}
 
-	
+
 
 	// If we are defending our base and are not gorge yet, make sure we save a point at all times so we can evolve when we want to
 	if (pBot->CurrentRole == BOT_ROLE_BUILDER && !IsPlayerGorge(pBot->pEdict))
@@ -2489,7 +2466,7 @@ CombatModeAlienUpgrade AlienGetNextCombatUpgrade(bot_t* pBot)
 		if (NumAvailablePoints <= 1) { return COMBAT_ALIEN_UPGRADE_NONE; }
 	}
 
-	
+
 
 	// Get adrenaline if we're defending
 	if (pBot->CurrentRole == BOT_ROLE_BUILDER)
@@ -2532,7 +2509,7 @@ CombatModeAlienUpgrade AlienGetNextCombatUpgrade(bot_t* pBot)
 
 		return COMBAT_ALIEN_UPGRADE_NONE;
 	}
-	
+
 	// Here we decide if we want to evolve to onos eventually, or stay as a jacked-up fade
 	if (pBot->CurrentRole == BOT_ROLE_DESTROYER)
 	{
