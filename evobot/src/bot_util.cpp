@@ -333,7 +333,12 @@ void BotTakeDamage(bot_t* pBot, int damageTaken, edict_t* aggressor)
 		else
 		{
 			// The further the enemy is, the more inaccurate the bot's guess will be where they are
-			pBot->TrackedEnemies[aggressorIndex].LastSeenLocation = UTIL_GetRandomPointOnNavmeshInRadius(ALL_NAV_PROFILE, aggressor->v.origin, vDist2D(pBot->pEdict->v.origin, aggressor->v.origin));
+			pBot->TrackedEnemies[aggressorIndex].LastSeenLocation = UTIL_GetRandomPointOnNavmeshInRadius(ALL_NAV_PROFILE, aggressor->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));
+
+			if (!UTIL_QuickTrace(pBot->pEdict, pBot->CurrentEyePosition, pBot->TrackedEnemies[aggressorIndex].LastSeenLocation + Vector(0.0f, 0.0f, 18.0f)))
+			{
+				pBot->TrackedEnemies[aggressorIndex].LastSeenLocation = aggressor->v.origin;
+			}
 		}
 
 		//UTIL_DrawLine(clients[0], pBot->pEdict->v.origin, pBot->TrackedEnemies[aggressorIndex].LastSeenLocation, 5.0f);
@@ -998,6 +1003,12 @@ void BotAttackTarget(bot_t* pBot, edict_t* Target)
 
 	if (AttackResult == ATTACK_OUTOFRANGE)
 	{
+		// Might need to duck if it's an infantry portal
+		if (vDist2DSq(pBot->pEdict->v.origin, Target->v.origin) < sqrf(max_player_use_reach))
+		{
+			pBot->pEdict->v.button |= IN_DUCK;
+		}
+
 		MoveTo(pBot, Target->v.origin, MOVESTYLE_NORMAL, WeaponRange);
 
 		if (IsPlayerMarine(pBot->pEdict))
@@ -1041,6 +1052,12 @@ void BotAttackTarget(bot_t* pBot, edict_t* Target)
 
 	if (AttackResult == ATTACK_SUCCESS)
 	{
+		// If we were ducking before then keep ducking
+		if (pBot->pEdict->v.oldbuttons & IN_DUCK)
+		{
+			pBot->pEdict->v.button |= IN_DUCK;
+		}
+
 		BotShootTarget(pBot, Weapon, Target);
 	}
 }
@@ -1235,9 +1252,6 @@ void UTIL_ClearAllBotData(bot_t* pBot)
 		fflush(pBot->logFile);
 		fclose(pBot->logFile);
 	}
-
-	
-
 }
 
 void BotUpdateViewRotation(bot_t* pBot, float DeltaTime)
@@ -1548,11 +1562,7 @@ void BotUpdateView(bot_t* pBot)
 
 		bool bIsTracked = (!bHasLOS && (IsPlayerParasited(Enemy) || IsPlayerMotionTracked(Enemy)));
 
-		// If the enemy is too far away to engage, ignore them
-		float MaxRelevantDist = (bIsTracked) ? UTIL_MetresToGoldSrcUnits(15.0f) : UTIL_MetresToGoldSrcUnits(50.0f);
-		bool bIsRelevant = (vDist2DSq(pBot->pEdict->v.origin, Enemy->v.origin) <= sqrf(MaxRelevantDist));
-
-		if (bIsRelevant && bInFOV && (bHasLOS || bIsTracked))
+		if (bInFOV && (bHasLOS || bIsTracked))
 		{
 			Vector BotLocation = UTIL_GetFloorUnderEntity(Enemy);
 			Vector BotVelocity = Enemy->v.velocity;
@@ -1586,13 +1596,7 @@ void BotUpdateView(bot_t* pBot)
 			{
 				TrackingInfo->LastHiddenPosition = pBot->CurrentFloorPosition + Vector(0.0f, 0.0f, 5.0f);
 				TrackingInfo->LastTrackedTime = gpGlobals->time;
-
-				if (vDist2DSq(pBot->pEdict->v.origin, TrackingInfo->LastLOSPosition) < sqrf(18.0f))
-				{
-					TrackingInfo->LastLOSPosition = ZERO_VECTOR;
-				}
 			}
-			
 
 			continue;
 		}
@@ -1600,7 +1604,9 @@ void BotUpdateView(bot_t* pBot)
 		if (bHasLOS)
 		{
 			TrackingInfo->LastLOSPosition = pBot->CurrentFloorPosition + Vector(0.0f, 0.0f, 5.0f);
-			if (vDist2DSq(pBot->pEdict->v.origin, TrackingInfo->LastHiddenPosition) < sqrf(18.0f))
+
+
+			if (TrackingInfo->LastHiddenPosition != ZERO_VECTOR && UTIL_QuickTrace(pBot->pEdict, TrackingInfo->LastHiddenPosition, Enemy->v.origin))
 			{
 				TrackingInfo->LastHiddenPosition = ZERO_VECTOR;
 			}
@@ -1609,16 +1615,17 @@ void BotUpdateView(bot_t* pBot)
 		{
 			TrackingInfo->LastHiddenPosition = pBot->pEdict->v.origin;
 
-			if (vDist2DSq(pBot->pEdict->v.origin, TrackingInfo->LastLOSPosition) < sqrf(18.0f))
+			if (TrackingInfo->LastLOSPosition != ZERO_VECTOR && !UTIL_QuickTrace(pBot->pEdict, TrackingInfo->LastLOSPosition, Enemy->v.origin))
 			{
 				TrackingInfo->LastLOSPosition = ZERO_VECTOR;
 			}
+
 		}
 
 		// If we've not been aware of the enemy's location for over 10 seconds, forget about them
 		float LastDetectedTime = fmaxf(TrackingInfo->LastSeenTime, TrackingInfo->LastTrackedTime);
 
-		if (!bIsRelevant || ((gpGlobals->time - LastDetectedTime) > 10.0f))
+		if ((gpGlobals->time - LastDetectedTime) > 10.0f)
 		{
 			BotClearEnemyTrackingInfo(TrackingInfo);
 			continue;
@@ -1694,6 +1701,8 @@ void BotClearEnemyTrackingInfo(enemy_status* TrackingInfo)
 	TrackingInfo->LastSeenVelocity = ZERO_VECTOR;
 	TrackingInfo->bIsAwareOfPlayer = false;
 	TrackingInfo->LastSeenTime = 0.0f;
+	TrackingInfo->LastLOSPosition = ZERO_VECTOR;
+	TrackingInfo->LastHiddenPosition = ZERO_VECTOR;
 }
 
 void StartNewBotFrame(bot_t* pBot)
@@ -2015,6 +2024,11 @@ int BotGetNextEnemyTarget(bot_t* pBot)
 				if ((gpGlobals->time - TrackingInfo->LastSeenTime) > 5.0f) { continue; }
 			}
 
+			if (Dist > sqrf(UTIL_MetresToGoldSrcUnits(15.0f)) && (gpGlobals->time - TrackingInfo->LastSeenTime) > 10.0f)
+			{
+				continue;
+			}
+
 			if (NearestUnseenEnemy < 0 || Dist < ClosestUnseenDist)
 			{
 				NearestUnseenEnemy = i;
@@ -2048,24 +2062,23 @@ void DroneThink(bot_t* pBot)
 
 void CustomThink(bot_t* pBot)
 {
-	if (!IsPlayerGorge(pBot->pEdict)) { return; }
+	if (!IsPlayerSkulk(pBot->pEdict)) { return; }
 
 	pBot->CurrentEnemy = BotGetNextEnemyTarget(pBot);
 
 	if (pBot->CurrentEnemy > -1)
 	{
-		edict_t* Enemy = pBot->TrackedEnemies[pBot->CurrentEnemy].EnemyEdict;
+		AlienCombatThink(pBot);
+	}
+	else
+	{
+		edict_t* Enemy = UTIL_GetNearestPlayerOfTeamInArea(pBot->pEdict->v.origin, UTIL_MetresToGoldSrcUnits(100.0f), MARINE_TEAM, nullptr, CLASS_NONE);
 
-		if (pBot->TrackedEnemies[pBot->CurrentEnemy].bHasLOS)
+		if (!FNullEnt(Enemy))
 		{
-			BotShootTarget(pBot, WEAPON_GORGE_BILEBOMB, Enemy);
+			MoveTo(pBot, Enemy->v.origin, MOVESTYLE_NORMAL, 100.0f);
 		}
 	}
-
-	//BotDrawPath(pBot, 0.0f, false);
-	//UTIL_DrawLine(GAME_GetListenServerEdict(), pBot->pEdict->v.origin, pBot->pEdict->v.origin + (pBot->desiredMovementDir * 100.0f));
-
-
 }
 
 void TestAimThink(bot_t* pBot)

@@ -2276,7 +2276,7 @@ bool HasBotReachedPathPoint(const bot_t* pBot)
 	Vector ClosestPointToPath = vClosestPointOnLine2D(pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint - 1].Location, pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].Location, pEdict->v.origin);
 
 	bool bDestIsDirectlyReachable = UTIL_PointIsDirectlyReachable(CurrentPos, CurrentMoveDest);
-	bool bAtOrPastDestination = vEquals(ClosestPointToPath, Vector(CurrentMoveDest.x, CurrentMoveDest.y, 0.0f), 1.0f) && bDestIsDirectlyReachable;
+	bool bAtOrPastDestination = vEquals2D(ClosestPointToPath, CurrentMoveDest, 1.0f) && bDestIsDirectlyReachable;
 
 	dtPolyRef BotPoly = pBot->BotNavInfo.CurrentPoly;
 	dtPolyRef DestinationPoly = pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].poly;
@@ -3561,6 +3561,90 @@ bool UTIL_TraceNav(const int NavProfileIndex, const Vector start, const Vector t
 	return (Height == 0.0f || Height == EndNearest[1]);
 }
 
+void UTIL_TraceNavLine(const int NavProfileIndex, const Vector Start, const Vector End, nav_hitresult* HitResult)
+{
+	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfileIndex);
+	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(NavProfileIndex);
+	const dtQueryFilter* m_Filter = UTIL_GetNavMeshFilterForProfile(NavProfileIndex);
+
+	if (!m_navQuery)
+	{
+		HitResult->flFraction = 0.0f;
+		HitResult->bStartOffMesh = true;
+		HitResult->TraceEndPoint = Start;
+		return;
+	}
+
+	float pStartPos[3] = { Start.x, Start.z, -Start.y };
+	float pEndPos[3] = { End.x, End.z, -End.y };
+
+	dtPolyRef StartPoly;
+	dtPolyRef EndPoly;
+	float StartNearest[3] = { 0.0f, 0.0f, 0.0f };
+	float EndNearest[3] = { 0.0f, 0.0f, 0.0f };
+
+	float hitDist;
+	float HitNormal[3];
+
+	dtPolyRef PolyPath[MAX_PATH_POLY];
+	int pathCount = 0;
+
+	float MaxReachableExtents[3] = { 18.0f, 32.0f, 18.0f };
+
+	dtStatus FoundStartPoly = m_navQuery->findNearestPoly(pStartPos, MaxReachableExtents, m_Filter, &StartPoly, StartNearest);
+
+	if (!dtStatusSucceed(FoundStartPoly))
+	{
+		HitResult->flFraction = 0.0f;
+		HitResult->bStartOffMesh = true;
+		HitResult->TraceEndPoint = Start;
+		return;
+	}
+
+	dtStatus FoundEndPoly = m_navQuery->findNearestPoly(pEndPos, MaxReachableExtents, m_Filter, &EndPoly, EndNearest);
+
+	if (!dtStatusSucceed(FoundEndPoly))
+	{
+		HitResult->flFraction = 0.0f;
+		HitResult->bStartOffMesh = true;
+		HitResult->TraceEndPoint = Start;
+		return;
+	}
+
+	// All polys are convex, therefore definitely reachable if start and end points are within the same poly
+	if (StartPoly == EndPoly)
+	{
+
+		HitResult->flFraction = 1.0f;
+		HitResult->bStartOffMesh = false;
+		HitResult->TraceEndPoint = Vector(EndNearest[0], -EndNearest[2], EndNearest[1]);
+		return;
+	}
+
+	
+
+	m_navQuery->raycast(StartPoly, StartNearest, EndNearest, m_Filter, &hitDist, HitNormal, PolyPath, &pathCount, MAX_PATH_SIZE);
+
+	HitResult->flFraction = hitDist;
+	HitResult->bStartOffMesh = false;
+
+	Vector HitLocation = ZERO_VECTOR;
+
+	if (hitDist >= 1.0f)
+	{
+		HitLocation = Vector(EndNearest[0], -EndNearest[2], EndNearest[1]);
+	}
+	else
+	{
+		Vector Dir = UTIL_GetVectorNormal(End - Start);
+		Vector Point = Start + (Dir * HitResult->flFraction);
+
+		HitLocation = UTIL_ProjectPointToNavmesh(Point, Vector(100.0f, 100.0f, 100.0f), NavProfileIndex);
+	}
+
+	HitResult->TraceEndPoint = HitLocation;
+}
+
 bool UTIL_PointIsDirectlyReachable(const Vector start, const Vector target)
 {
 	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(ALL_NAV_PROFILE);
@@ -4118,9 +4202,13 @@ bool MoveTo(bot_t* pBot, const Vector Destination, const BotMoveStyle MoveStyle,
 	// If we are currently in the process of getting back on the navmesh, don't interrupt
 	if (BotNavInfo->UnstuckMoveLocation != ZERO_VECTOR)
 	{
+		Vector MoveTarget = BotNavInfo->UnstuckMoveStartLocation + (UTIL_GetVectorNormal2D(BotNavInfo->UnstuckMoveLocation - BotNavInfo->UnstuckMoveStartLocation) * 100.0f);
+
+		MoveDirectlyTo(pBot, MoveTarget);
+
 		Vector ClosestPoint = vClosestPointOnLine2D(BotNavInfo->UnstuckMoveStartLocation, BotNavInfo->UnstuckMoveLocation, pBot->pEdict->v.origin);
 
-		bool bAtOrPastMoveLocation = vEquals(ClosestPoint, BotNavInfo->UnstuckMoveLocation, 0.1f);
+		bool bAtOrPastMoveLocation = vEquals2D(ClosestPoint, BotNavInfo->UnstuckMoveLocation, 0.1f);
 
 		if (bAtOrPastMoveLocation)
 		{
@@ -4147,7 +4235,7 @@ bool MoveTo(bot_t* pBot, const Vector Destination, const BotMoveStyle MoveStyle,
 				pBot->pEdict->v.button |= IN_DUCK;
 			}
 
-			MoveDirectlyTo(pBot, BotNavInfo->UnstuckMoveLocation);
+			
 
 			return true;
 		}
@@ -4162,7 +4250,7 @@ bool MoveTo(bot_t* pBot, const Vector Destination, const BotMoveStyle MoveStyle,
 	bool bDestinationChanged = (!vEquals(Destination, BotNavInfo->TargetDestination, GetPlayerRadius(pBot->pEdict)));
 
 	// Only recalculate the path if there isn't a path, or something has changed and enough time has elapsed since the last path calculation
-	bool bShouldCalculatePath = (BotNavInfo->PathSize == 0 || (bCanRecalculatePath && (bMoveStyleChanged || bNavProfileChanged || bDestinationChanged || BotNavInfo->bPendingRecalculation)));
+	bool bShouldCalculatePath = bCanRecalculatePath && (BotNavInfo->PathSize == 0 || (bMoveStyleChanged || bNavProfileChanged || bDestinationChanged || BotNavInfo->bPendingRecalculation));
 
 	if (bShouldCalculatePath)
 	{

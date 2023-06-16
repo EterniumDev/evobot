@@ -173,6 +173,29 @@ void AlienCombatModeThink(bot_t* pBot)
 
 void BotAlienSetPrimaryTask(bot_t* pBot, bot_task* Task)
 {
+	if ((IsPlayerSkulk(pBot->pEdict) || IsPlayerGorge(pBot->pEdict)) && GetPlayerResources(pBot->pEdict) > 45 && !UTIL_HiveIsInProgress() && UTIL_GetNumUnbuiltHives() > 0)
+	{
+		if (Task->TaskType == TASK_BUILD && Task->StructureType == STRUCTURE_ALIEN_HIVE) { return; }
+
+		const hive_definition* UnbuiltHiveIndex = UTIL_GetClosestViableUnbuiltHive(pBot->pEdict->v.origin);
+
+		if (UnbuiltHiveIndex)
+		{
+			edict_t* OtherBuilder = GetFirstBotWithBuildTask(STRUCTURE_ALIEN_HIVE, pBot->pEdict);
+
+			if (FNullEnt(OtherBuilder))
+			{
+				OtherBuilder = UTIL_GetNearestPlayerOfClass(UnbuiltHiveIndex->Location, CLASS_GORGE, UTIL_MetresToGoldSrcUnits(30.0f), pBot->pEdict);
+			}
+
+			if (FNullEnt(OtherBuilder) || GetPlayerResources(OtherBuilder) < GetPlayerResources(pBot->pEdict))
+			{
+				TASK_SetBuildTask(pBot, Task, STRUCTURE_ALIEN_HIVE, UnbuiltHiveIndex->FloorLocation, true);
+				return;
+			}
+		}
+	}
+
 	switch (pBot->CurrentRole)
 	{
 	case BOT_ROLE_HARASS:
@@ -217,11 +240,8 @@ void AlienSetCombatModeSecondaryTask(bot_t* pBot, bot_task* Task)
 			}
 		}
 
-		Task->TaskType = TASK_EVOLVE;
-		Task->TaskLocation = EvolvePosition;
-		Task->Evolution = IMPULSE_ALIEN_EVOLVE_GORGE;
-		Task->bTaskIsUrgent = true;
-		Task->TaskStartedTime = 0.0f;
+
+		TASK_SetEvolveTask(pBot, Task, EvolvePosition, IMPULSE_ALIEN_EVOLVE_GORGE, true);
 		return;
 
 	}
@@ -247,11 +267,8 @@ void AlienSetCombatModeSecondaryTask(bot_t* pBot, bot_task* Task)
 			}
 		}
 
-		Task->TaskType = TASK_EVOLVE;
-		Task->TaskLocation = EvolvePosition;
-		Task->Evolution = IMPULSE_ALIEN_EVOLVE_LERK;
-		Task->bTaskIsUrgent = true;
-		Task->TaskStartedTime = 0.0f;
+
+		TASK_SetEvolveTask(pBot, Task, EvolvePosition, IMPULSE_ALIEN_EVOLVE_LERK, true);
 		return;
 
 	}
@@ -277,20 +294,16 @@ void AlienSetCombatModeSecondaryTask(bot_t* pBot, bot_task* Task)
 			}
 		}
 
-		Task->TaskType = TASK_EVOLVE;
-		Task->TaskLocation = EvolvePosition;
-		Task->TaskStartedTime = 0.0f;
+
+		int EvolutionImpulse = Task->Evolution = IMPULSE_ALIEN_EVOLVE_FADE;
+
 
 		if ((pBot->CombatUpgradeMask & COMBAT_ALIEN_UPGRADE_ONOS) && GetBotAvailableCombatPoints(pBot) >= 4)
 		{
-			Task->Evolution = IMPULSE_ALIEN_EVOLVE_ONOS;
-		}
-		else
-		{
-			Task->Evolution = IMPULSE_ALIEN_EVOLVE_FADE;
+			EvolutionImpulse = IMPULSE_ALIEN_EVOLVE_ONOS;
 		}
 		
-		Task->bTaskIsUrgent = true;
+		TASK_SetEvolveTask(pBot, Task, EvolvePosition, EvolutionImpulse, true);
 		return;
 
 	}
@@ -337,7 +350,8 @@ void AlienHarasserSetPrimaryTask(bot_t* pBot, bot_task* Task)
 		BotEvolveLifeform(pBot, CLASS_SKULK);
 	}
 
-	if (!IsPlayerFade(pBot->pEdict) && !IsPlayerOnos(pBot->pEdict))
+
+	if (!IsPlayerLerk(pBot->pEdict))
 	{
 		if (pBot->resources >= kLerkEvolutionCost)
 		{
@@ -356,88 +370,37 @@ void AlienHarasserSetPrimaryTask(bot_t* pBot, bot_task* Task)
 				EvolveLocation = pBot->pEdict->v.origin;
 			}
 
-			int NumLerks = GAME_GetNumPlayersOnTeamOfClass(ALIEN_TEAM, CLASS_LERK);
-
-			if (NumLerks < 2)
-			{
-				Task->TaskType = TASK_EVOLVE;
-				Task->Evolution = IMPULSE_ALIEN_EVOLVE_LERK;
-				Task->bTaskIsUrgent = true;
-				Task->TaskLocation = EvolveLocation;
-				return;
-			}
-		}
-	}
-
-	int NumMarineTowers = UTIL_GetStructureCountOfType(STRUCTURE_MARINE_RESTOWER);
-	int NumAlienTowers = UTIL_GetStructureCountOfType(STRUCTURE_ALIEN_RESTOWER);
-
-	if (NumMarineTowers > 2)
-	{
-		const resource_node* ResNode = UTIL_GetNearestCappedResNodeToLocation(pBot->pEdict->v.origin, MARINE_TEAM, !IsPlayerSkulk(pBot->pEdict));
-
-		if (ResNode)
-		{
-			TASK_SetAttackTask(pBot, Task, ResNode->TowerEdict, false);
+			TASK_SetEvolveTask(pBot, Task, EvolveLocation, IMPULSE_ALIEN_EVOLVE_LERK, true);
 			return;
 		}
 	}
 
-	if (NumAlienTowers >= 3)
+	int NumInfantryPortals = UTIL_GetStructureCountOfType(STRUCTURE_MARINE_INFANTRYPORTAL);
+
+	if (NumInfantryPortals > 0)
 	{
-		int NumInfantryPortals = UTIL_GetStructureCountOfType(STRUCTURE_MARINE_INFANTRYPORTAL);
+		edict_t* InfPortal = UTIL_GetFirstCompletedStructureOfType(STRUCTURE_MARINE_INFANTRYPORTAL);
 
-		if (NumInfantryPortals > 0)
+		if (InfPortal)
 		{
-			edict_t* InfPortal = UTIL_GetFirstCompletedStructureOfType(STRUCTURE_MARINE_INFANTRYPORTAL);
-
-			if (InfPortal)
-			{
-				TASK_SetAttackTask(pBot, Task, InfPortal, false);
-				return;
-			}
-		}
-
-		edict_t* CommChair = UTIL_GetCommChair();
-
-		if (CommChair)
-		{
-			TASK_SetAttackTask(pBot, Task, CommChair, false);
-			return;
-		}
-
-		edict_t* EnemyPlayer = UTIL_GetNearestPlayerOfTeamInArea(pBot->pEdict->v.origin, UTIL_MetresToGoldSrcUnits(100.0f), MARINE_TEAM, nullptr, CLASS_NONE);
-
-		if (!FNullEnt(EnemyPlayer))
-		{
-			TASK_SetAttackTask(pBot, Task, EnemyPlayer, true);
-			return;
-		}
-
-	}
-
-	const resource_node* ResNode = UTIL_FindEligibleResNodeClosestToLocation(pBot->pEdict->v.origin, ALIEN_TEAM, !IsPlayerSkulk(pBot->pEdict));
-
-	if (ResNode)
-	{
-		if (ResNode->bIsOccupied && !FNullEnt(ResNode->TowerEdict))
-		{
-			TASK_SetAttackTask(pBot, Task, ResNode->TowerEdict, false);
-			return;
-		}
-		else
-		{
-			TASK_SetMoveTask(pBot, Task, ResNode->origin, false);
+			TASK_SetAttackTask(pBot, Task, InfPortal, false);
 			return;
 		}
 	}
-	else
-	{
-		
-		int NavProfile = UTIL_GetMoveProfileForBot(pBot, MOVESTYLE_NORMAL);
-		Vector RandomMovePoint = UTIL_GetRandomPointOnNavmeshInRadius(NavProfile, pBot->pEdict->v.origin, UTIL_MetresToGoldSrcUnits(50.0f));
 
-		TASK_SetMoveTask(pBot, Task, RandomMovePoint, false);
+	edict_t* CommChair = UTIL_GetCommChair();
+
+	if (CommChair)
+	{
+		TASK_SetAttackTask(pBot, Task, CommChair, false);
+		return;
+	}
+
+	edict_t* EnemyPlayer = UTIL_GetNearestPlayerOfTeamInArea(pBot->pEdict->v.origin, UTIL_MetresToGoldSrcUnits(100.0f), MARINE_TEAM, nullptr, CLASS_NONE);
+
+	if (!FNullEnt(EnemyPlayer))
+	{
+		TASK_SetAttackTask(pBot, Task, EnemyPlayer, true);
 		return;
 	}
 
@@ -450,7 +413,6 @@ void AlienHarasserSetCombatModePrimaryTask(bot_t* pBot, bot_task* Task)
 
 void AlienCapperSetPrimaryTask(bot_t* pBot, bot_task* Task)
 {
-
 	bool bCappingIsUrgent = UTIL_GetNumPlacedStructuresOfType(STRUCTURE_ALIEN_RESTOWER) < 3;
 
 	int RequiredRes = kResourceTowerCost;
@@ -460,77 +422,119 @@ void AlienCapperSetPrimaryTask(bot_t* pBot, bot_task* Task)
 		RequiredRes += kGorgeEvolutionCost;
 	}
 
-	if (pBot->resources < RequiredRes)
+	// Have enough or nearly enough to go cap a res node
+	if (pBot->resources >= (RequiredRes - 5))
 	{
-		if (IsPlayerGorge(pBot->pEdict))
+		const resource_node* RandomResNode = nullptr;
+
+		if (!IsPlayerGorge(pBot->pEdict) || PlayerHasWeapon(pBot->pEdict, WEAPON_GORGE_BILEBOMB))
+		{
+			RandomResNode = UTIL_FindEligibleResNodeFurthestFromLocation(UTIL_GetCommChairLocation(), ALIEN_TEAM, !IsPlayerSkulk(pBot->pEdict));
+		}
+		else
+		{
+			RandomResNode = UTIL_AlienFindUnclaimedResNodeFurthestFromLocation(pBot, UTIL_GetCommChairLocation(), !IsPlayerSkulk(pBot->pEdict));
+		}
+
+		if (RandomResNode)
 		{
 			// Already capping a node, do nothing
-			if (Task->TaskType == TASK_CAP_RESNODE) { return; }
-
-			const resource_node* EmptyResNode = UTIL_AlienFindUnclaimedResNodeFurthestFromLocation(pBot, UTIL_GetCommChairLocation(), true);
-
-			if (EmptyResNode)
-			{
-				TASK_SetCapResNodeTask(pBot, Task, EmptyResNode, bCappingIsUrgent);
-				return;
-			}
-			else
-			{
-				BotEvolveLifeform(pBot, CLASS_SKULK);
-			}
+			if (Task->TaskType == TASK_CAP_RESNODE && (vDist2DSq(pBot->pEdict->v.origin, Task->TaskLocation) <= vDist2DSq(pBot->pEdict->v.origin, RandomResNode->origin))) { return; }
+			TASK_SetCapResNodeTask(pBot, Task, RandomResNode, bCappingIsUrgent);
 			return;
 		}
-
-		// Don't set a new attack or move task if we have one already
-		if (Task->TaskType == TASK_ATTACK) { return; }
-
-		edict_t* RandomResTower = UTIL_GetRandomStructureOfType(STRUCTURE_MARINE_RESTOWER, nullptr, true);
-
-		if (!FNullEnt(RandomResTower))
-		{
-			TASK_SetAttackTask(pBot, Task, RandomResTower, false);
-			return;
-		}
-
-		if (Task->TaskType == TASK_MOVE) { return; }
-
-		// Attack a random resource node or move to one TODO: Prefer attacking where possible...
-		Vector RandomPoint = UTIL_GetRandomPointOfInterest();
-
-		if (RandomPoint != ZERO_VECTOR)
-		{
-			TASK_SetMoveTask(pBot, Task, RandomPoint, false);
-			return;
-		}
-
-		return;
 	}
 
-	// Already capping a node, do nothing
-	if (Task->TaskType == TASK_CAP_RESNODE) { return; }
-
-	const resource_node* RandomResNode = nullptr;
-
+	// Don't have enough to cap right now, take out marine towers
 	if (!IsPlayerGorge(pBot->pEdict) || PlayerHasWeapon(pBot->pEdict, WEAPON_GORGE_BILEBOMB))
 	{
-		RandomResNode = UTIL_FindEligibleResNodeFurthestFromLocation(UTIL_GetCommChairLocation(), ALIEN_TEAM, !IsPlayerSkulk(pBot->pEdict));
+		edict_t* EnemyResTower = UTIL_GetNearestStructureOfTypeInLocation(STRUCTURE_MARINE_RESTOWER, pBot->pEdict->v.origin, UTIL_MetresToGoldSrcUnits(200.0f), false, false);
+
+		if (!FNullEnt(EnemyResTower))
+		{
+			// Don't set a new attack or move task if we have one already
+			if (Task->TaskType == TASK_ATTACK && Task->TaskTarget == EnemyResTower) { return; }
+			TASK_SetAttackTask(pBot, Task, EnemyResTower, false);
+			return;
+		}
 	}
 	else
 	{
-		RandomResNode = UTIL_AlienFindUnclaimedResNodeFurthestFromLocation(pBot, UTIL_GetCommChairLocation(), !IsPlayerSkulk(pBot->pEdict));
+		TASK_SetEvolveTask(pBot, Task, pBot->pEdict->v.origin, IMPULSE_ALIEN_EVOLVE_SKULK, true);
 	}
 
-	if (RandomResNode)
+
+}
+
+bool IsAlienCapperTaskNeeded()
+{
+	const resource_node* RandomResNode = UTIL_FindEligibleResNodeFurthestFromLocation(UTIL_GetCommChairLocation(), ALIEN_TEAM, false);
+
+	if (RandomResNode) { return true; }
+
+	return false;
+}
+
+bool IsAlienBuilderTaskNeeded(bot_t* pBot)
+{
+	edict_t* pEdict = pBot->pEdict;
+
+	HiveTechStatus HiveTechOne = (HiveTechStatus)CONFIG_GetHiveTechAtIndex(0);
+	HiveTechStatus HiveTechTwo = (HiveTechStatus)CONFIG_GetHiveTechAtIndex(1);
+	HiveTechStatus HiveTechThree = (HiveTechStatus)CONFIG_GetHiveTechAtIndex(2);
+
+	if (UTIL_ActiveHiveWithTechExists(HiveTechOne) && UTIL_GetStructureCountOfType(UTIL_GetChamberTypeForHiveTech(HiveTechOne)) < 3)
 	{
-		TASK_SetCapResNodeTask(pBot, Task, RandomResNode, bCappingIsUrgent);
-		return;
+		return true;
+	}
+	
+	if (UTIL_ActiveHiveWithTechExists(HiveTechTwo) && UTIL_GetStructureCountOfType(UTIL_GetChamberTypeForHiveTech(HiveTechTwo)) < 3)
+	{
+		return true;
+	}
+	
+	if (UTIL_ActiveHiveWithTechExists(HiveTechThree) && UTIL_GetStructureCountOfType(UTIL_GetChamberTypeForHiveTech(HiveTechThree)) < 3)
+	{
+		return true;
 	}
 
-	// Can't do anything as gorge, return to skulk
-	if (IsPlayerGorge(pBot->pEdict))
+	const hive_definition* HiveIndex = UTIL_GetFirstHiveWithoutTech();
+
+	if (HiveIndex)
 	{
-		BotEvolveLifeform(pBot, CLASS_SKULK);
+		return true;
 	}
+
+	if (!UTIL_HiveIsInProgress() && UTIL_GetNumUnbuiltHives() > 0)
+	{
+		const hive_definition* UnbuiltHiveIndex = UTIL_GetClosestViableUnbuiltHive(pEdict->v.origin);
+		if (UnbuiltHiveIndex) { return true; }
+	}
+
+	if (UTIL_ActiveHiveWithTechExists(HIVE_TECH_DEFENCE))
+	{
+		const hive_definition* HiveNeedsSupporting = UTIL_GetActiveHiveWithoutChambers(HIVE_TECH_DEFENCE, 2);
+
+		if (HiveNeedsSupporting) { return true; }
+	}
+
+	if (UTIL_ActiveHiveWithTechExists(HIVE_TECH_MOVEMENT))
+	{
+		const hive_definition* HiveNeedsSupporting = UTIL_GetActiveHiveWithoutChambers(HIVE_TECH_MOVEMENT, 1);
+		if (HiveNeedsSupporting) { return true; }
+	}
+
+	if (UTIL_ActiveHiveWithTechExists(HIVE_TECH_SENSORY))
+	{
+		const hive_definition* HiveNeedsSupporting = UTIL_GetActiveHiveWithoutChambers(HIVE_TECH_SENSORY, 1);
+		if (HiveNeedsSupporting) { return true; }
+	}
+
+	const resource_node* NearestUnprotectedResNode = UTIL_GetNearestUnprotectedResNode(UTIL_GetCommChairLocation());
+
+	if (NearestUnprotectedResNode) { return true; }
+
+	return false;
 }
 
 void AlienBuilderSetPrimaryTask(bot_t* pBot, bot_task* Task)
@@ -625,12 +629,16 @@ void AlienBuilderSetPrimaryTask(bot_t* pBot, bot_task* Task)
 
 		if (UnbuiltHiveIndex)
 		{
-			edict_t* OtherGorge = UTIL_GetNearestPlayerOfClass(UnbuiltHiveIndex->Location, CLASS_GORGE, UTIL_MetresToGoldSrcUnits(30.0f), pEdict);
+			edict_t* OtherBuilder = GetFirstBotWithBuildTask(STRUCTURE_ALIEN_HIVE, pBot->pEdict);
 
-			if (FNullEnt(OtherGorge) || GetPlayerResources(OtherGorge) < pBot->resources)
+			if (FNullEnt(OtherBuilder))
+			{
+				OtherBuilder = UTIL_GetNearestPlayerOfClass(UnbuiltHiveIndex->Location, CLASS_GORGE, UTIL_MetresToGoldSrcUnits(30.0f), pEdict);
+			}
+
+			if (FNullEnt(OtherBuilder) || GetPlayerResources(OtherBuilder) < GetPlayerResources(pBot->pEdict))
 			{
 				TASK_SetBuildTask(pBot, Task, STRUCTURE_ALIEN_HIVE, UnbuiltHiveIndex->FloorLocation, false);
-
 				return;
 			}
 		}
@@ -875,11 +883,9 @@ void AlienDestroyerSetPrimaryTask(bot_t* pBot, bot_task* Task)
 
 			if (pBot->resources >= kOnosEvolutionCost)
 			{
-				Task->TaskType = TASK_EVOLVE;
-				Task->Evolution = IMPULSE_ALIEN_EVOLVE_ONOS;
-				Task->bTaskIsUrgent = true;
-				Task->TaskLocation = EvolveLocation;
-				Task->TaskStartedTime = 0.0f;
+
+				TASK_SetEvolveTask(pBot, Task, EvolveLocation, IMPULSE_ALIEN_EVOLVE_ONOS, true);
+
 				return;
 			}
 
@@ -887,11 +893,8 @@ void AlienDestroyerSetPrimaryTask(bot_t* pBot, bot_task* Task)
 
 			if (NumFades < 2)
 			{
-				Task->TaskType = TASK_EVOLVE;
-				Task->Evolution = IMPULSE_ALIEN_EVOLVE_FADE;
-				Task->bTaskIsUrgent = true;
-				Task->TaskLocation = EvolveLocation;
-				Task->TaskStartedTime = 0.0f;
+
+				TASK_SetEvolveTask(pBot, Task, EvolveLocation, IMPULSE_ALIEN_EVOLVE_FADE, true);
 				return;
 			}
 		}
@@ -899,11 +902,8 @@ void AlienDestroyerSetPrimaryTask(bot_t* pBot, bot_task* Task)
 
 	if (IsPlayerGorge(pBot->pEdict))
 	{
-		Task->TaskType = TASK_EVOLVE;
-		Task->Evolution = IMPULSE_ALIEN_EVOLVE_SKULK;
-		Task->bTaskIsUrgent = true;
-		Task->TaskLocation = pBot->pEdict->v.origin;
-		Task->TaskStartedTime = 0.0f;
+
+		TASK_SetEvolveTask(pBot, Task, pBot->pEdict->v.origin, IMPULSE_ALIEN_EVOLVE_SKULK, true);
 		return;
 	}
 
@@ -941,23 +941,20 @@ void AlienDestroyerSetPrimaryTask(bot_t* pBot, bot_task* Task)
 
 	if (!FNullEnt(BlockingStructure))
 	{
-		TASK_SetAttackTask(pBot, Task, BlockingStructure, false);
+		TASK_SetAttackTask(pBot, Task, BlockingStructure, IsPlayerOnos(pBot->pEdict));
 		return;
 	}
 
-	if (Task->TaskType == TASK_ATTACK)
+	// Focus on taking out phase gates to prevent reinforcements
+	edict_t* PhaseGate = UTIL_GetFirstCompletedStructureOfType(STRUCTURE_MARINE_PHASEGATE);
+
+	if (PhaseGate)
 	{
+		TASK_SetAttackTask(pBot, Task, PhaseGate, false);
 		return;
 	}
 
-	edict_t* InfPortal = UTIL_GetFirstCompletedStructureOfType(STRUCTURE_MARINE_INFANTRYPORTAL);
-
-	if (InfPortal)
-	{
-		TASK_SetAttackTask(pBot, Task, InfPortal, false);
-		return;
-	}
-
+	// Taking out arms labs gimps marines, make that next priority
 	edict_t* Armslab = UTIL_GetFirstCompletedStructureOfType(STRUCTURE_MARINE_ARMSLAB);
 
 	if (Armslab)
@@ -966,6 +963,7 @@ void AlienDestroyerSetPrimaryTask(bot_t* pBot, bot_task* Task)
 		return;
 	}
 
+	// Then observatories
 	edict_t* Obs = UTIL_GetFirstCompletedStructureOfType(STRUCTURE_MARINE_OBSERVATORY);
 
 	if (Obs)
@@ -974,6 +972,16 @@ void AlienDestroyerSetPrimaryTask(bot_t* pBot, bot_task* Task)
 		return;
 	}
 
+	// Then infantry portals
+	edict_t* InfPortal = UTIL_GetFirstCompletedStructureOfType(STRUCTURE_MARINE_INFANTRYPORTAL);
+
+	if (InfPortal)
+	{
+		TASK_SetAttackTask(pBot, Task, InfPortal, false);
+		return;
+	}
+
+	// And finally, the comm chair
 	edict_t* CommChair = UTIL_GetCommChair();
 
 	if (CommChair)
@@ -982,6 +990,7 @@ void AlienDestroyerSetPrimaryTask(bot_t* pBot, bot_task* Task)
 		return;
 	}
 
+	// Hunt down any last straggling marines once everything destroyed (assuming they don't just drop to the ready room and surrender)
 	edict_t* EnemyPlayer = UTIL_GetNearestPlayerOfTeamInArea(pBot->pEdict->v.origin, UTIL_MetresToGoldSrcUnits(100.0f), MARINE_TEAM, nullptr, CLASS_NONE);
 
 	if (!FNullEnt(EnemyPlayer))
@@ -1067,44 +1076,43 @@ void AlienBuilderSetSecondaryTask(bot_t* pBot, bot_task* Task)
 
 void AlienHarasserSetSecondaryTask(bot_t* pBot, bot_task* Task)
 {
-	edict_t* PhaseGate = UTIL_GetNearestStructureOfTypeInLocation(STRUCTURE_MARINE_PHASEGATE, pBot->pEdict->v.origin, UTIL_MetresToGoldSrcUnits(20.0f), !IsPlayerSkulk(pBot->pEdict), false);
+	edict_t* DangerStructure = UTIL_GetAnyStructureOfTypeNearActiveHive(STRUCTURE_MARINE_PHASEGATE, true, false);
 
-	if (PhaseGate)
+	if (FNullEnt(DangerStructure))
 	{
-		int NumExistingPlayers = UTIL_GetNumPlayersOfTeamInArea(PhaseGate->v.origin, UTIL_MetresToGoldSrcUnits(2.0f), pBot->bot_team, pBot->pEdict, CLASS_GORGE, false);
+		DangerStructure = UTIL_GetAnyStructureOfTypeNearActiveHive(STRUCTURE_MARINE_ANYTURRETFACTORY, true, false);
 
-		if (NumExistingPlayers < 2)
+		if (FNullEnt(DangerStructure))
 		{
-			TASK_SetAttackTask(pBot, Task, PhaseGate, true);
-			return;
+			DangerStructure = UTIL_GetAnyStructureOfTypeNearActiveHive(STRUCTURE_ANY_MARINE_STRUCTURE, true, false);
 		}
 	}
 
-	edict_t* TurretFactory = UTIL_GetNearestStructureOfTypeInLocation(STRUCTURE_MARINE_ANYTURRETFACTORY, pBot->pEdict->v.origin, UTIL_MetresToGoldSrcUnits(20.0f), !IsPlayerSkulk(pBot->pEdict), false);
-
-	if (TurretFactory)
+	if (!FNullEnt(DangerStructure))
 	{
-		int NumExistingPlayers = UTIL_GetNumPlayersOfTeamInArea(TurretFactory->v.origin, UTIL_MetresToGoldSrcUnits(2.0f), pBot->bot_team, pBot->pEdict, CLASS_GORGE, false);
-
-		if (NumExistingPlayers < 2)
-		{
-			TASK_SetAttackTask(pBot, Task, TurretFactory, true);
-			return;
-		}
+		TASK_SetAttackTask(pBot, Task, DangerStructure, true);
+		return;
 	}
 
-	edict_t* AnyMarineStructure = UTIL_FindClosestMarineStructureToLocation(pBot->pEdict->v.origin, UTIL_MetresToGoldSrcUnits(20.0f), !IsPlayerSkulk(pBot->pEdict));
 
-	if (AnyMarineStructure)
+	edict_t* Hive = UTIL_GetNearestUndefendedStructureOfTypeUnderAttack(pBot, STRUCTURE_ALIEN_HIVE);
+
+	if (!FNullEnt(Hive))
 	{
-		int NumExistingPlayers = UTIL_GetNumPlayersOfTeamInArea(AnyMarineStructure->v.origin, UTIL_MetresToGoldSrcUnits(2.0f), pBot->bot_team, pBot->pEdict, CLASS_GORGE, false);
-
-		if (NumExistingPlayers < 2)
-		{
-			TASK_SetAttackTask(pBot, Task, AnyMarineStructure, false);
-			return;
-		}
+		TASK_SetDefendTask(pBot, Task, Hive, true);
+		return;
 	}
+
+	edict_t* ResourceTower = UTIL_GetNearestUndefendedStructureOfTypeUnderAttack(pBot, STRUCTURE_ALIEN_RESTOWER);
+
+	if (!FNullEnt(ResourceTower))
+	{
+		TASK_SetDefendTask(pBot, Task, ResourceTower, true);
+		return;
+	}
+
+
+
 }
 
 void AlienCapperSetSecondaryTask(bot_t* pBot, bot_task* Task)
@@ -1124,25 +1132,41 @@ void AlienCapperSetSecondaryTask(bot_t* pBot, bot_task* Task)
 		return;
 	}
 
-	edict_t* Hive = UTIL_GetNearestUndefendedStructureOfTypeUnderAttack(pBot, STRUCTURE_ALIEN_HIVE);
-
-	if (!FNullEnt(Hive))
-	{
-		TASK_SetDefendTask(pBot, Task, Hive, true);
-		return;
-	}
-
 	edict_t* ResourceTower = UTIL_GetNearestUndefendedStructureOfTypeUnderAttack(pBot, STRUCTURE_ALIEN_RESTOWER);
 
 	if (!FNullEnt(ResourceTower))
 	{
+		if (Task->TaskType == TASK_DEFEND && Task->TaskTarget == ResourceTower) { return; }
 		TASK_SetDefendTask(pBot, Task, ResourceTower, true);
 		return;
 	}
+
+	edict_t* Hive = UTIL_GetNearestUndefendedStructureOfTypeUnderAttack(pBot, STRUCTURE_ALIEN_HIVE);
+
+	if (!FNullEnt(Hive))
+	{
+		if (Task->TaskType == TASK_DEFEND && Task->TaskTarget == Hive) { return; }
+		TASK_SetDefendTask(pBot, Task, Hive, true);
+		return;
+	}
+
+
 }
 
 void AlienDestroyerSetSecondaryTask(bot_t* pBot, bot_task* Task)
 {
+	// Don't defend stuff if we're onos, we have smash smash to do
+	if (IsPlayerOnos(pBot->pEdict)) { return; }
+
+	// Don't defend if we're a lowly skulk and could go fade/onos, prioritise that first
+	if (IsPlayerSkulk(pBot->pEdict) && GetPlayerResources(pBot->pEdict) >= kFadeEvolutionCost)
+	{
+		return;
+	}
+
+	// Don't interrupt an attack task as destroyer if we're already close to attacking. Means fades and onos will focus on doing what they do best
+	if (pBot->PrimaryBotTask.TaskType == TASK_ATTACK && vDist2DSq(pBot->pEdict->v.origin, pBot->PrimaryBotTask.TaskTarget->v.origin) < sqrf(UTIL_MetresToGoldSrcUnits(10.0f))) { return; }
+
 	edict_t* Hive = UTIL_GetNearestUndefendedStructureOfTypeUnderAttack(pBot, STRUCTURE_ALIEN_HIVE);
 
 	if (!FNullEnt(Hive))
@@ -1150,7 +1174,7 @@ void AlienDestroyerSetSecondaryTask(bot_t* pBot, bot_task* Task)
 		TASK_SetDefendTask(pBot, Task, Hive, true);
 		return;
 	}
-
+		
 	edict_t* ResourceTower = UTIL_GetNearestUndefendedStructureOfTypeUnderAttack(pBot, STRUCTURE_ALIEN_RESTOWER);
 
 	if (!FNullEnt(ResourceTower))
@@ -1227,7 +1251,9 @@ void SkulkCombatThink(bot_t* pBot)
 	bool bHealingSourceIsStructure = (!FNullEnt(HealingSource)) ? IsEdictStructure(HealingSource) : false;
 
 	// If we have backup, or we're near a source of healing then charge in
-	if (NumFriends >= NumEnemyAllies || bHealingSourceIsStructure && vDist2DSq(CurrentEnemy->v.origin, HealingSource->v.origin) < sqrf(UTIL_MetresToGoldSrcUnits(10.0f)))
+
+	if (NumFriends >= NumEnemyAllies || ( bHealingSourceIsStructure && vDist2DSq(CurrentEnemy->v.origin, HealingSource->v.origin) < sqrf(UTIL_MetresToGoldSrcUnits(10.0f)) ) )
+
 	{
 		MoveTo(pBot, CurrentEnemy->v.origin, MOVESTYLE_NORMAL);
 
@@ -1271,7 +1297,9 @@ void SkulkCombatThink(bot_t* pBot)
 	{
 		int MoveProfile = UTIL_GetMoveProfileForBot(pBot, MOVESTYLE_HIDE);
 
-		Vector EscapeLocation = pBot->LastSafeLocation;
+
+		Vector EscapeLocation = ZERO_VECTOR;//pBot->LastSafeLocation;
+
 
 		if (!EscapeLocation)
 		{
@@ -1288,7 +1316,16 @@ void SkulkCombatThink(bot_t* pBot)
 		return;
 	}
 
-	BotLookAt(pBot, TrackedEnemyRef->LastLOSPosition);
+
+	if (TrackedEnemyRef->LastLOSPosition != ZERO_VECTOR)
+	{
+		BotLookAt(pBot, TrackedEnemyRef->LastSeenLocation);
+
+		return;
+	}
+
+	MoveTo(pBot, TrackedEnemyRef->LastSeenLocation, MOVESTYLE_AMBUSH);
+
 	
 }
 
@@ -1734,7 +1771,9 @@ void LerkCombatThink(bot_t* pBot)
 			}
 			else
 			{
-				BotLookAt(pBot, TrackedEnemyRef->LastLOSPosition);
+
+				BotLookAt(pBot, TrackedEnemyRef->LastSeenLocation);
+
 
 				if (TrackedEnemyRef->LastLOSPosition != ZERO_VECTOR && vDist2DSq(CurrentEnemy->v.origin, TrackedEnemyRef->LastLOSPosition) < sqrf(UTIL_MetresToGoldSrcUnits(5.0f)) && UTIL_QuickTrace(pBot->pEdict, pBot->CurrentEyePosition, TrackedEnemyRef->LastLOSPosition) && !UTIL_IsAreaAffectedBySpores(TrackedEnemyRef->LastLOSPosition))
 				{
@@ -1946,8 +1985,6 @@ void AlienCheckWantsAndNeeds(bot_t* pBot)
 {
 	edict_t* pEdict = pBot->pEdict;
 
-	if (IsPlayerDead(pEdict)) { return; }
-
 	float MaxHealthAndArmour = pEdict->v.max_health + GetPlayerMaxArmour(pEdict);
 	float CurrentHealthAndArmour = pEdict->v.health + pEdict->v.armorvalue;
 
@@ -1966,13 +2003,40 @@ void AlienCheckWantsAndNeeds(bot_t* pBot)
 		}
 	}
 
-	bool bLowOnHealth = ((CurrentHealthAndArmour / MaxHealthAndArmour) <= 0.5f);
+	float OverallHealthPercent = (CurrentHealthAndArmour / MaxHealthAndArmour);
+
+	bool bLowOnHealth = (OverallHealthPercent <= 0.5f);
 
 	// Don't go hunting for health as a gorge, can heal themselves quickly. Fades will because metabolise isn't enough
 	if (bLowOnHealth && !IsPlayerGorge(pBot->pEdict))
 	{
+		// Already getting health
+		if (pBot->WantsAndNeedsTask.TaskType == TASK_GET_HEALTH && (OverallHealthPercent > 0.35f || IsEdictStructure(pBot->WantsAndNeedsTask.TaskTarget)) )
+		{
+			pBot->WantsAndNeedsTask.bTaskIsUrgent = true;
+			return;
+		}
 
-		edict_t* HealingSource = UTIL_AlienFindNearestHealingSpot(pBot, pEdict->v.origin);
+		edict_t* HealingSource = nullptr;
+		
+		// If we're REALLY low on health then go to the hive, don't try to heal at a gorge
+		if (OverallHealthPercent > 0.35f)
+		{
+			HealingSource = UTIL_AlienFindNearestHealingSpot(pBot, pEdict->v.origin);
+		}
+		else
+		{
+			const hive_definition* NearestHive = UTIL_GetNearestBuiltHiveToLocation(pBot->pEdict->v.origin);
+
+			if (NearestHive)
+			{
+				HealingSource = NearestHive->edict;
+			}
+			else
+			{
+				HealingSource = UTIL_AlienFindNearestHealingSpot(pBot, pEdict->v.origin);
+			}
+		}
 
 		if (!FNullEnt(HealingSource))
 		{
@@ -2103,6 +2167,7 @@ int GetDesiredAlienUpgrade(const bot_t* pBot, const HiveTechStatus TechType)
 		}
 		case CLASS_GORGE:
 		case CLASS_FADE:
+		case CLASS_LERK:
 		{
 			if (randbool())
 			{
@@ -2167,6 +2232,8 @@ int GetDesiredAlienUpgrade(const bot_t* pBot, const HiveTechStatus TechType)
 				return IMPULSE_ALIEN_UPGRADE_SILENCE;
 			}
 		}
+		case CLASS_LERK:
+			return IMPULSE_ALIEN_UPGRADE_ADRENALINE;
 		case CLASS_GORGE:
 		case CLASS_FADE:
 		case CLASS_ONOS:
@@ -2194,6 +2261,8 @@ int GetDesiredAlienUpgrade(const bot_t* pBot, const HiveTechStatus TechType)
 			return IMPULSE_ALIEN_UPGRADE_CLOAK;
 		case CLASS_SKULK:
 		case CLASS_FADE:
+		case CLASS_LERK:
+			return IMPULSE_ALIEN_UPGRADE_FOCUS;
 		case CLASS_ONOS:
 		{
 			if (randbool())
@@ -2231,20 +2300,15 @@ BotRole AlienGetBestBotRole(bot_t* pBot)
 
 	if (NumPlayersOnTeam == 0) { return BOT_ROLE_DESTROYER; } // Shouldn't ever happen but let's not risk a divide by zero later on...
 
-	int NumHarassers = GAME_GetBotsWithRoleType(BOT_ROLE_HARASS, ALIEN_TEAM, pBot->pEdict);
 
-	if (NumHarassers < 1)
+	// If we have enough resources, or nearly enough, and we don't have any fades already on the team then prioritise this
+	if (GetPlayerResources(pBot->pEdict) > ((float)kFadeEvolutionCost * 0.8f))
 	{
-		return BOT_ROLE_HARASS;
-	}
-	else
-	{
-		// If we have enough resources, or nearly enough, and we don't have any fades already on the team then prioritise this
-		if (GetPlayerResources(pBot->pEdict) > ((float)kFadeEvolutionCost * 0.8f))
-		{
-			int NumFadesAndOnos = GAME_GetNumPlayersOnTeamOfClass(ALIEN_TEAM, CLASS_FADE) + GAME_GetNumPlayersOnTeamOfClass(ALIEN_TEAM, CLASS_ONOS);
-			int NumDestroyers = GAME_GetBotsWithRoleType(BOT_ROLE_DESTROYER, ALIEN_TEAM, pBot->pEdict);
-			int Existing = NumPlayersOnTeam - NumDestroyers;
+		if (GetPlayerResources(pBot->pEdict) > 60) { return BOT_ROLE_DESTROYER; }
+
+		int NumFadesAndOnos = GAME_GetNumPlayersOnTeamOfClass(ALIEN_TEAM, CLASS_FADE) + GAME_GetNumPlayersOnTeamOfClass(ALIEN_TEAM, CLASS_ONOS);
+		int NumDestroyers = GAME_GetBotsWithRoleType(BOT_ROLE_DESTROYER, ALIEN_TEAM, pBot->pEdict);
+		int Existing = NumPlayersOnTeam - NumDestroyers;
 
 			if (Existing > 0 && ((float)NumFadesAndOnos / (float)Existing < 0.33f))
 			{
@@ -2253,7 +2317,19 @@ BotRole AlienGetBestBotRole(bot_t* pBot)
 		}
 	}
 
-	
+
+	// If we have enough resources, or nearly enough, and we don't have any lerks already on the team then prioritise this
+	if (GetPlayerResources(pBot->pEdict) > ((float)kLerkEvolutionCost * 0.8f))
+	{
+		int NumLerks = GAME_GetNumPlayersOnTeamOfClass(ALIEN_TEAM, CLASS_LERK);
+		int NumHarassers = GAME_GetBotsWithRoleType(BOT_ROLE_HARASS, ALIEN_TEAM, pBot->pEdict);
+
+		if (NumLerks + NumHarassers < 1)
+		{
+			return BOT_ROLE_HARASS;
+		}
+	}
+
 
 	int NumTotalResNodes = UTIL_GetNumResNodes();
 
@@ -2263,59 +2339,54 @@ BotRole AlienGetBestBotRole(bot_t* pBot)
 		return BOT_ROLE_DESTROYER;
 	}
 
-	int NumAlienResTowers = UTIL_GetNumPlacedStructuresOfType(STRUCTURE_ALIEN_RESTOWER);
-
-	int NumRemainingResNodes = NumTotalResNodes - NumAlienResTowers;
-
-	int NumCappers = GAME_GetBotsWithRoleType(BOT_ROLE_RES_CAPPER, ALIEN_TEAM, pBot->pEdict);
-
-	// Always have one capper on the team as long as there are nodes we can cap
-	if (NumRemainingResNodes > 1 && NumCappers == 0)
+	// Don't go capper if we have nothing to cap...
+	if (IsAlienCapperTaskNeeded())
 	{
-		return BOT_ROLE_RES_CAPPER;
-	}
+		int NumAlienResTowers = UTIL_GetNumPlacedStructuresOfType(STRUCTURE_ALIEN_RESTOWER);
 
-	// How much of the map do we currently dominate?
-	float ResTowerRatio = ((float)NumAlienResTowers / (float)NumTotalResNodes);
+		int NumRemainingResNodes = NumTotalResNodes - NumAlienResTowers;
 
-	// If we own less than a third of the map, prioritise capping resource nodes
-	if (ResTowerRatio < 0.30f && NumCappers < 3)
-	{
-		return BOT_ROLE_RES_CAPPER;
-	}
+		int NumCappers = GAME_GetBotsWithRoleType(BOT_ROLE_RES_CAPPER, ALIEN_TEAM, pBot->pEdict);
 
-	if (ResTowerRatio <= 0.5f)
-	{
-		float CapperRatio = ((float)NumCappers / (float)NumPlayersOnTeam);
-
-		if (CapperRatio < 0.2f)
+		// Always have one capper on the team as long as there are nodes we can cap
+		if (NumRemainingResNodes > 1 && NumCappers == 0)
 		{
 			return BOT_ROLE_RES_CAPPER;
 		}
+
+		// How much of the map do we currently dominate?
+		float ResTowerRatio = ((float)NumAlienResTowers / (float)NumTotalResNodes);
+
+		// If we own less than a third of the map, prioritise capping resource nodes
+		if (ResTowerRatio < 0.30f && NumCappers < 3)
+		{
+			return BOT_ROLE_RES_CAPPER;
+		}
+
+		if (ResTowerRatio <= 0.5f)
+		{
+			float CapperRatio = ((float)NumCappers / (float)NumPlayersOnTeam);
+
+			if (CapperRatio < 0.2f)
+			{
+				return BOT_ROLE_RES_CAPPER;
+			}
+		}
 	}
 
-	/*
-	if (pBot->resources >= 35)
+	// Don't go builder if we have nothing to build...
+	if (IsAlienBuilderTaskNeeded(pBot))
 	{
-		bot_task PotentialBuildTask;
-		AlienBuilderSetPrimaryTask(pBot, &PotentialBuildTask);
+		int NumRequiredBuilders = CalcNumAlienBuildersRequired();
+		int NumBuilders = GAME_GetBotsWithRoleType(BOT_ROLE_BUILDER, ALIEN_TEAM, pBot->pEdict);
 
-		if (PotentialBuildTask.TaskType == TASK_BUILD && PotentialBuildTask.StructureType == STRUCTURE_ALIEN_HIVE)
+		if (NumBuilders < NumRequiredBuilders)
 		{
-			memcpy(&pBot->PrimaryBotTask, &PotentialBuildTask, sizeof(bot_task));
 			return BOT_ROLE_BUILDER;
 		}
-	}*/
-
-
-
-	int NumRequiredBuilders = CalcNumAlienBuildersRequired();
-	int NumBuilders = GAME_GetBotsWithRoleType(BOT_ROLE_BUILDER, ALIEN_TEAM, pBot->pEdict);
-
-	if (NumBuilders < NumRequiredBuilders)
-	{
-		return BOT_ROLE_BUILDER;
 	}
+
+	
 
 	return BOT_ROLE_DESTROYER;
 }
