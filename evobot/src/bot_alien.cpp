@@ -418,7 +418,7 @@ void AlienCapperSetPrimaryTask(bot_t* pBot, bot_task* Task)
 	}
 
 	// Have enough or nearly enough to go cap a res node
-	if (pBot->resources >= (RequiredRes - 2))
+	if (pBot->resources >= (RequiredRes - 5))
 	{
 		const resource_node* RandomResNode = nullptr;
 
