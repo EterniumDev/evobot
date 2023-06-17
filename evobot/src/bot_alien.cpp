@@ -663,10 +663,10 @@ void AlienBuilderSetPrimaryTask(bot_t* pBot, bot_task* Task)
 		}
 	}
 
-	// Make sure every hive has a movement chamber
+	// Make sure every hive has 2 movement chambers
 	if (UTIL_ActiveHiveWithTechExists(HIVE_TECH_MOVEMENT))
 	{
-		const hive_definition* HiveNeedsSupporting = UTIL_GetActiveHiveWithoutChambers(HIVE_TECH_MOVEMENT, 1);
+		const hive_definition* HiveNeedsSupporting = UTIL_GetActiveHiveWithoutChambers(HIVE_TECH_MOVEMENT, 2);
 
 		if (HiveNeedsSupporting)
 		{
@@ -685,10 +685,10 @@ void AlienBuilderSetPrimaryTask(bot_t* pBot, bot_task* Task)
 		}
 	}
 
-	// Make sure every hive has a sensory chamber
+	// Make sure every hive has 2 sensory chambers
 	if (UTIL_ActiveHiveWithTechExists(HIVE_TECH_SENSORY))
 	{
-		const hive_definition* HiveNeedsSupporting = UTIL_GetActiveHiveWithoutChambers(HIVE_TECH_SENSORY, 1);
+		const hive_definition* HiveNeedsSupporting = UTIL_GetActiveHiveWithoutChambers(HIVE_TECH_SENSORY, 2);
 
 		if (HiveNeedsSupporting)
 		{
@@ -717,14 +717,6 @@ void AlienBuilderSetPrimaryTask(bot_t* pBot, bot_task* Task)
 
 		if (BuildLocation == ZERO_VECTOR)
 		{
-			return;
-		}
-
-		int NumOffenceChambers = UTIL_GetNumPlacedStructuresOfTypeInRadius(STRUCTURE_ALIEN_OFFENCECHAMBER, NearestUnprotectedResNode->origin, UTIL_MetresToGoldSrcUnits(5.0f));
-
-		if (NumOffenceChambers < 2)
-		{
-			TASK_SetBuildTask(pBot, Task, STRUCTURE_ALIEN_OFFENCECHAMBER, BuildLocation, false);
 			return;
 		}
 
@@ -759,6 +751,14 @@ void AlienBuilderSetPrimaryTask(bot_t* pBot, bot_task* Task)
 				TASK_SetBuildTask(pBot, Task, STRUCTURE_ALIEN_SENSORYCHAMBER, BuildLocation, false);
 				return;
 			}
+		}
+
+		int NumOffenceChambers = UTIL_GetNumPlacedStructuresOfTypeInRadius(STRUCTURE_ALIEN_OFFENCECHAMBER, NearestUnprotectedResNode->origin, UTIL_MetresToGoldSrcUnits(5.0f));
+
+		if (NumOffenceChambers < 2)
+		{
+			TASK_SetBuildTask(pBot, Task, STRUCTURE_ALIEN_OFFENCECHAMBER, BuildLocation, false);
+			return;
 		}
 
 	}
@@ -2147,6 +2147,9 @@ int GetDesiredAlienUpgrade(const bot_t* pBot, const HiveTechStatus TechType)
 			return IMPULSE_ALIEN_UPGRADE_CARAPACE;
 		}
 		case CLASS_GORGE:
+		{
+			return IMPULSE_ALIEN_UPGRADE_REGENERATION;
+		}
 		case CLASS_FADE:
 		case CLASS_LERK:
 		{
@@ -2210,7 +2213,7 @@ int GetDesiredAlienUpgrade(const bot_t* pBot, const HiveTechStatus TechType)
 			}
 			else
 			{
-				return IMPULSE_ALIEN_UPGRADE_SILENCE;
+				return IMPULSE_ALIEN_UPGRADE_ADRENALINE;
 			}
 		}
 		case CLASS_LERK:
@@ -2238,9 +2241,8 @@ int GetDesiredAlienUpgrade(const bot_t* pBot, const HiveTechStatus TechType)
 	{
 		switch (pBot->bot_ns_class)
 		{
-		case CLASS_GORGE:
-			return IMPULSE_ALIEN_UPGRADE_CLOAK;
 		case CLASS_SKULK:
+		case CLASS_GORGE:
 		case CLASS_FADE:
 		case CLASS_LERK:
 			return IMPULSE_ALIEN_UPGRADE_FOCUS;
