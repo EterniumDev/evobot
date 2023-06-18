@@ -1055,7 +1055,7 @@ void BotAlienSetSecondaryTask(bot_t* pBot, bot_task* Task)
 		AlienHarasserSetSecondaryTask(pBot, &pBot->SecondaryBotTask);
 		break;
 	case BOT_ROLE_DESTROYER:
-		AlienDestroyerSetSecondaryTask(pBot, Task);
+		AlienDestroyerSetSecondaryTask(pBot, &pBot->SecondaryBotTask); //this might make the bots not respond to friendly RTs being attacked
 		break;
 	case BOT_ROLE_RES_CAPPER:
 		AlienCapperSetSecondaryTask(pBot, Task);
