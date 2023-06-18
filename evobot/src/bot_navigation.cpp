@@ -649,9 +649,9 @@ void DEBUG_DrawNavMesh(const Vector DrawCentre, const int NavMeshIndex)
 
 		if (NumTiles == 0)
 		{
-			char buf[64];
-			sprintf(buf, "Failed to find any tiles! %d in total\n", m_tileCache->getTileCount());
-			UTIL_SayText(buf, clients[0]);
+			char bufg[64];
+			sprintf(bufg, "Failed to find any tiles! %d in total\n", m_tileCache->getTileCount());
+			UTIL_SayText(bufg, clients[0]);
 		}
 
 		for (int i = 0; i < NumTiles; i++)
@@ -756,9 +756,9 @@ bool loadNavigationData(const char* mapname)
 	}
 	if (header.magic != TILECACHESET_MAGIC)
 	{
-		char buf[64];
-		sprintf(buf, "Header Magic does not match! %d\n", header.magic);
-		ClientPrint(clients[0], HUD_PRINTNOTIFY, buf);
+		char bufh[64];
+		sprintf(bufh, "Header Magic does not match! %d\n", header.magic);
+		ClientPrint(clients[0], HUD_PRINTNOTIFY, bufh);
 		fclose(savedFile);
 		UnloadNavigationData();
 		return false;
@@ -4625,9 +4625,9 @@ void DEBUG_TestBackwardsPathFind(edict_t* pEdict, const Vector Destination)
 		DEBUG_DrawPath(BackwardsPath, BackwardsPathSize, 10.0f);
 		UTIL_DrawLine(pEdict, pEdict->v.origin, NewMoveLocation, 10.0f, 255, 0, 255);
 
-		char buf[64];
-		sprintf(buf, "Found backwards path (%f, %f, %f)!\n", NewMoveLocation.x, NewMoveLocation.y, NewMoveLocation.z);
-		UTIL_SayText(buf, pEdict);
+		char bufj[64];
+		sprintf(bufj, "Found backwards path (%f, %f, %f)!\n", NewMoveLocation.x, NewMoveLocation.y, NewMoveLocation.z);
+		UTIL_SayText(bufj, pEdict);
 	}
 	else
 	{

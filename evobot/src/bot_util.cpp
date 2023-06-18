@@ -2615,30 +2615,30 @@ void BotDirectLookAt(bot_t* pBot, Vector target)
 
 void UTIL_DisplayBotInfo(bot_t* pBot)
 {
-	char buf[511];
+	char bufz[511];
 	char interbuff[64];
 
-	sprintf(buf, "Bot Role: %s\n", UTIL_BotRoleToChar(pBot->CurrentRole));
+	sprintf(bufz, "Bot Role: %s\n", UTIL_BotRoleToChar(pBot->CurrentRole));
 
 	sprintf(interbuff, "Primary Task: %s\n", UTIL_TaskTypeToChar(pBot->PrimaryBotTask.TaskType));
 
-	strcat(buf, interbuff);
+	strcat(bufz, interbuff);
 
 	sprintf(interbuff, "Second Task: %s\n", UTIL_TaskTypeToChar(pBot->SecondaryBotTask.TaskType));
 
-	strcat(buf, interbuff);
+	strcat(bufz, interbuff);
 
 	sprintf(interbuff, "Want Task: %s\n", UTIL_TaskTypeToChar(pBot->WantsAndNeedsTask.TaskType));
 
-	strcat(buf, interbuff);
+	strcat(bufz, interbuff);
 
 	if (BotGetNextEnemyTarget(pBot) > -1)
 	{
 		sprintf(interbuff, "Current Task: COMBAT\n");
 
-		strcat(buf, interbuff);
+		strcat(bufz, interbuff);
 
-		UTIL_DrawHUDText(GAME_GetListenServerEdict(), 0, 0.1f, 0.1f, 255, 255, 255, buf);
+		UTIL_DrawHUDText(GAME_GetListenServerEdict(), 0, 0.1f, 0.1f, 255, 255, 255, bufz);
 
 		return;
 	}
@@ -2659,17 +2659,17 @@ void UTIL_DisplayBotInfo(bot_t* pBot)
 			strcat(interbuff, "\n");
 		}
 
-		strcat(buf, interbuff);
+		strcat(bufz, interbuff);
 	}
 
 	if (GAME_GetGameMode() == GAME_MODE_COMBAT)
 	{
 		sprintf(interbuff, "Available Points: %d\n", GetBotAvailableCombatPoints(pBot));
 
-		strcat(buf, interbuff);
+		strcat(bufz, interbuff);
 	}
 
-	UTIL_DrawHUDText(GAME_GetListenServerEdict(), 0, 0.1f, 0.1f, 255, 255, 255, buf);
+	UTIL_DrawHUDText(GAME_GetListenServerEdict(), 0, 0.1f, 0.1f, 255, 255, 255, bufz);
 }
 
 bot_t* UTIL_GetSpectatedBot(const edict_t* Observer)

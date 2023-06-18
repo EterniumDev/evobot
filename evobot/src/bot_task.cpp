@@ -517,25 +517,25 @@ bool UTIL_IsAlienBuildTaskStillValid(bot_t* pBot, bot_task* Task)
 
 		if (!FNullEnt(OtherGorge) && GetPlayerResources(OtherGorge) > pBot->resources)
 		{
-			char buf[128];
-			sprintf(buf, "I won't drop hive, %s can do it", STRING(OtherGorge->v.netname));
-			BotTeamSay(pBot, 1.0f, buf);
+			char bufk[128];
+			sprintf(bufk, "I won't drop hive, %s can do it", STRING(OtherGorge->v.netname));
+			BotTeamSay(pBot, 1.0f, bufk);
 			return false;
 		}
 
 		if (UTIL_StructureOfTypeExistsInLocation(STRUCTURE_MARINE_PHASEGATE, HiveIndex->Location, UTIL_MetresToGoldSrcUnits(15.0f)))
 		{
-			char buf[128];
-			sprintf(buf, "We need to clear %s before I can build the hive", UTIL_GetClosestMapLocationToPoint(HiveIndex->Location));
-			BotTeamSay(pBot, 1.0f, buf);
+			char bufm[128];
+			sprintf(bufm, "We need to clear %s before I can build the hive", UTIL_GetClosestMapLocationToPoint(HiveIndex->Location));
+			BotTeamSay(pBot, 1.0f, bufm);
 			return false;
 		}
 
 		if (UTIL_StructureOfTypeExistsInLocation(STRUCTURE_MARINE_TURRETFACTORY, HiveIndex->Location, UTIL_MetresToGoldSrcUnits(15.0f)))
 		{
-			char buf[128];
-			sprintf(buf, "We need to clear %s before I can build the hive", UTIL_GetClosestMapLocationToPoint(HiveIndex->Location));
-			BotTeamSay(pBot, 1.0f, buf);
+			char bufn[128];
+			sprintf(bufn, "We need to clear %s before I can build the hive", UTIL_GetClosestMapLocationToPoint(HiveIndex->Location));
+			BotTeamSay(pBot, 1.0f, bufn);
 			return false;
 		}
 
@@ -1865,10 +1865,10 @@ void TASK_SetBuildTask(bot_t* pBot, bot_task* Task, const NSStructureType Struct
 
 		if (StructureType == STRUCTURE_ALIEN_HIVE)
 		{
-			char buf[64];
-			sprintf(buf, "I'll drop hive at %s", UTIL_GetClosestMapLocationToPoint(Task->TaskLocation));
+			char bufx[64];
+			sprintf(bufx, "I'll drop hive at %s", UTIL_GetClosestMapLocationToPoint(Task->TaskLocation));
 
-			BotTeamSay(pBot, 1.0f, buf);
+			BotTeamSay(pBot, 1.0f, bufx);
 		}
 	}
 }

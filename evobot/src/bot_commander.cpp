@@ -446,21 +446,21 @@ bool CommanderProgressOrderAction(bot_t* CommanderBot, int ActionIndex, int Prio
 		{
 			if (FreeResNodeIndex->bIsOccupied)
 			{
-				char buf[512];
-				sprintf(buf, "Destroy the alien tower %s so I can put down one", STRING(PlayerEdict->v.netname));
-				BotTeamSay(CommanderBot, 2.0f, buf);
+				char bufa[512];
+				sprintf(bufa, "Destroy the alien tower %s so I can put down one", STRING(PlayerEdict->v.netname));
+				BotTeamSay(CommanderBot, 2.0f, bufa);
 			}
 			else if (CommanderBot->resources < kResourceTowerCost)
 			{
-				char buf[128];
-				sprintf(buf, "Hold on %s, just waiting on resources", STRING(PlayerEdict->v.netname));
-				BotTeamSay(CommanderBot, 2.0f, buf);
+				char bufb[128];
+				sprintf(bufb, "Hold on %s, just waiting on resources", STRING(PlayerEdict->v.netname));
+				BotTeamSay(CommanderBot, 2.0f, bufb);
 			}
 			else
 			{
-				char buf[128];
-				sprintf(buf, "Hold on %s, will drop a tower for you in a moment", STRING(PlayerEdict->v.netname));
-				BotTeamSay(CommanderBot, 2.0f, buf);
+				char bufc[128];
+				sprintf(bufc, "Hold on %s, will drop a tower for you in a moment", STRING(PlayerEdict->v.netname));
+				BotTeamSay(CommanderBot, 2.0f, bufc);
 			}
 		}
 		UTIL_ClearCommanderAction(CommanderBot, ActionIndex, Priority);
@@ -468,9 +468,9 @@ bool CommanderProgressOrderAction(bot_t* CommanderBot, int ActionIndex, int Prio
 	}
 	else
 	{
-		char buf[128];
-		sprintf(buf, "Hold on %s, I'll find something for you to do", STRING(PlayerEdict->v.netname));
-		BotTeamSay(CommanderBot, buf);
+		char bufd[128];
+		sprintf(bufd, "Hold on %s, I'll find something for you to do", STRING(PlayerEdict->v.netname));
+		BotTeamSay(CommanderBot, bufd);
 	}
 
 
@@ -673,17 +673,17 @@ void CommanderReceiveAmmoRequest(bot_t* pBot, edict_t* Requestor)
 
 	if (UTIL_StructureOfTypeExistsInLocation(STRUCTURE_MARINE_ANYARMOURY, Requestor->v.origin, UTIL_MetresToGoldSrcUnits(15.0f)))
 	{
-		char buf[64];
-		sprintf(buf, "Can you use the armoury please, %s?", STRING(Requestor->v.netname));
-		BotTeamSay(pBot, 2.0f, buf);
+		char bufe[64];
+		sprintf(bufe, "Can you use the armoury please, %s?", STRING(Requestor->v.netname));
+		BotTeamSay(pBot, 2.0f, bufe);
 		return;
 	}
 
 	if (UTIL_GetItemCountOfTypeInArea(ITEM_MARINE_AMMO, Requestor->v.origin, UTIL_MetresToGoldSrcUnits(10.0f)) > 0)
 	{
-		char buf[64];
-		sprintf(buf, "I've already dropped ammo there, %s", STRING(Requestor->v.netname));
-		BotTeamSay(pBot, 2.0f, buf);
+		char buff[64];
+		sprintf(buff, "I've already dropped ammo there, %s", STRING(Requestor->v.netname));
+		BotTeamSay(pBot, 2.0f, buff);
 		return;
 	}
 
