@@ -1009,6 +1009,20 @@ void BotAttackTarget(bot_t* pBot, edict_t* Target)
 			pBot->pEdict->v.button |= IN_DUCK;
 		}
 
+		if (IsPlayerLerk(pBot->pEdict))
+		{
+			if (UTIL_ShouldBotBeCautious(pBot))
+			{
+				MoveTo(pBot, Target->v.origin, MOVESTYLE_HIDE, 100.0f);
+			}
+			else
+			{
+				MoveTo(pBot, Target->v.origin, MOVESTYLE_NORMAL, 100.0f);
+			}
+
+			return;
+		}
+
 		MoveTo(pBot, Target->v.origin, MOVESTYLE_NORMAL, WeaponRange);
 
 		if (IsPlayerMarine(pBot->pEdict))
@@ -1538,7 +1552,6 @@ void BotUpdateView(bot_t* pBot)
 		bool bInFOV = IsPlayerInBotFOV(pBot, Enemy);
 		bool bHasLOS = DoesBotHaveLOSToPlayer(pBot, Enemy);
 
-
 		if (pBot->LastSafeLocation != ZERO_VECTOR && UTIL_PlayerHasLOSToLocation(Enemy, pBot->LastSafeLocation, UTIL_MetresToGoldSrcUnits(50.0f)))
 		{
 			pBot->LastSafeLocation = ZERO_VECTOR;
@@ -1604,7 +1617,6 @@ void BotUpdateView(bot_t* pBot)
 		if (bHasLOS)
 		{
 			TrackingInfo->LastLOSPosition = pBot->CurrentFloorPosition + Vector(0.0f, 0.0f, 5.0f);
-
 
 			if (TrackingInfo->LastHiddenPosition != ZERO_VECTOR && UTIL_QuickTrace(pBot->pEdict, TrackingInfo->LastHiddenPosition, Enemy->v.origin))
 			{
@@ -2062,7 +2074,7 @@ void DroneThink(bot_t* pBot)
 
 void CustomThink(bot_t* pBot)
 {
-	if (!IsPlayerSkulk(pBot->pEdict)) { return; }
+	if (!IsPlayerAlien(pBot->pEdict)) { return; }
 
 	pBot->CurrentEnemy = BotGetNextEnemyTarget(pBot);
 
@@ -2072,11 +2084,20 @@ void CustomThink(bot_t* pBot)
 	}
 	else
 	{
-		edict_t* Enemy = UTIL_GetNearestPlayerOfTeamInArea(pBot->pEdict->v.origin, UTIL_MetresToGoldSrcUnits(100.0f), MARINE_TEAM, nullptr, CLASS_NONE);
+		edict_t* Enemy = UTIL_GetNearestPlayerOfTeamInArea(pBot->pEdict->v.origin, UTIL_MetresToGoldSrcUnits(500.0f), MARINE_TEAM, nullptr, CLASS_NONE);
 
 		if (!FNullEnt(Enemy))
 		{
-			MoveTo(pBot, Enemy->v.origin, MOVESTYLE_NORMAL, 100.0f);
+			if (UTIL_ShouldBotBeCautious(pBot))
+			{
+				MoveTo(pBot, Enemy->v.origin, MOVESTYLE_HIDE, 100.0f);
+			}
+			else
+			{
+				MoveTo(pBot, Enemy->v.origin, MOVESTYLE_NORMAL, 100.0f);
+			}
+
+			
 		}
 	}
 }
@@ -2675,4 +2696,27 @@ bot_t* UTIL_GetSpectatedBot(const edict_t* Observer)
 	}
 
 	return &bots[BotIndex];
+}
+
+bool UTIL_ShouldBotBeCautious(bot_t* pBot)
+{
+	if (pBot->BotNavInfo.PathSize == 0) { return false; }
+
+	if (UTIL_GetBotCurrentPathArea(pBot) != SAMPLE_POLYAREA_GROUND) { return false; }
+
+	int EnemyTeam = (pBot->bot_team == MARINE_TEAM) ? ALIEN_TEAM : MARINE_TEAM;
+
+	int NumEnemiesAtDestination = UTIL_GetNumPlayersOnTeamWithLOS(pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].Location, EnemyTeam, UTIL_MetresToGoldSrcUnits(50.0f), pBot->pEdict);
+
+	if (NumEnemiesAtDestination > 1)
+	{
+		return (vDist2DSq(pBot->pEdict->v.origin, pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].Location) < sqrf(UTIL_MetresToGoldSrcUnits(5.0f)));
+	}
+
+	return false;
+}
+
+bool BotHasTaskOfType(bot_t* pBot, BotTaskType TaskType)
+{
+	return (pBot->PrimaryBotTask.TaskType == TaskType || pBot->SecondaryBotTask.TaskType == TaskType || pBot->WantsAndNeedsTask.TaskType == TaskType || pBot->CommanderTask.TaskType == TaskType);
 }

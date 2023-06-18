@@ -47,7 +47,9 @@ NSWeapon SkulkGetBestWeaponForCombatTarget(bot_t* pBot, edict_t* Target);
 NSWeapon GorgeGetBestWeaponForCombatTarget(bot_t* pBot, edict_t* Target);
 NSWeapon LerkGetBestWeaponForCombatTarget(bot_t* pBot, edict_t* Target);
 
-NSWeapon GorgeGetBestWeaponForCombatTarget(bot_t* pBot, edict_t* Target);
-NSWeapon LerkGetBestWeaponForCombatTarget(bot_t* pBot, edict_t* Target);
+
+//NSWeapon GorgeGetBestWeaponForCombatTarget(bot_t* pBot, edict_t* Target);
+//NSWeapon LerkGetBestWeaponForCombatTarget(bot_t* pBot, edict_t* Target);
+
 
 #endif

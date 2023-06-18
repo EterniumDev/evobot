@@ -907,6 +907,7 @@ void ClientCommand(edict_t* pEntity)
 				if (IsPlayerOnAlienTeam(bots[i].pEdict) && !IsPlayerDead(bots[i].pEdict))
 				{
 
+
 					TASK_SetEvolveTask(&bots[i], &bots[i].PrimaryBotTask, bots[i].pEdict->v.origin, IMPULSE_ALIEN_EVOLVE_ONOS, true);
 
 				}

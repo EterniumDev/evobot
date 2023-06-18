@@ -4066,10 +4066,7 @@ bool AbortCurrentMove(bot_t* pBot, const Vector NewDestination)
 
 	Vector ClosestPointOnLine = vClosestPointOnLine2D(MoveFrom, MoveTo, pBot->pEdict->v.origin);
 
-	Vector MoveFrom2D = Vector(MoveFrom.x, MoveFrom.y, 0.0f);
-	Vector MoveTo2D = Vector(MoveTo.x, MoveTo.y, 0.0f);
-
-	bool bAtOrPastMovement = (vEquals(ClosestPointOnLine, MoveFrom2D, 1.0f) || vEquals(ClosestPointOnLine, MoveTo2D, 1.0f));
+	bool bAtOrPastMovement = (vEquals2D(ClosestPointOnLine, MoveFrom, 1.0f) || vEquals2D(ClosestPointOnLine, MoveTo, 1.0f));
 
 	if ((pBot->pEdict->v.flags & FL_ONGROUND) && (bAtOrPastMovement || UTIL_PointIsDirectlyReachable(pBot->pEdict->v.origin, MoveFrom) || UTIL_PointIsDirectlyReachable(pBot->pEdict->v.origin, MoveTo)))
 	{
@@ -4752,28 +4749,35 @@ void BotFollowFlightPath(bot_t* pBot)
 
 	float Velocity = vSize2DSq(pBot->pEdict->v.velocity);
 
-	if (Velocity < sqrf(500.f))
+	bool bMustHugGround = (pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].area == SAMPLE_POLYAREA_CROUCH || pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint + 1].area == SAMPLE_POLYAREA_CROUCH);
+
+	if (!bMustHugGround || pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint - 1].Location.z <= pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].Location.z)
 	{
-		if (!(pBot->pEdict->v.oldbuttons & IN_JUMP))
+		if (Velocity < sqrf(500.f))
 		{
-			pBot->pEdict->v.button |= IN_JUMP;
-		}
-		else
-		{
-			if (gpGlobals->time - BotNavInfo->LastFlapTime < 0.2f)
+			if (!(pBot->pEdict->v.oldbuttons & IN_JUMP))
 			{
 				pBot->pEdict->v.button |= IN_JUMP;
 			}
 			else
 			{
-				BotNavInfo->LastFlapTime = gpGlobals->time;
+				if (gpGlobals->time - BotNavInfo->LastFlapTime < 0.2f)
+				{
+					pBot->pEdict->v.button |= IN_JUMP;
+				}
+				else
+				{
+					BotNavInfo->LastFlapTime = gpGlobals->time;
+				}
 			}
 		}
+		else
+		{
+			pBot->pEdict->v.button |= IN_JUMP;
+		}
 	}
-	else
-	{
-		pBot->pEdict->v.button |= IN_JUMP;
-	}
+
+
 
 	pBot->desiredMovementDir = UTIL_GetForwardVector2D(pBot->pEdict->v.v_angle);
 
@@ -4787,7 +4791,7 @@ void BotFollowFlightPath(bot_t* pBot)
 	else
 	{
 		// Crouch areas need the lerk to stick close to the ground to avoid missing the crouch entry point
-		bool bMustHugGround = (pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].area == SAMPLE_POLYAREA_CROUCH || pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint + 1].area == SAMPLE_POLYAREA_CROUCH);
+		
 		bool bIsFinalPoint = pBot->BotNavInfo.CurrentPathPoint == pBot->BotNavInfo.PathSize - 1;
 
 		if (bMustHugGround || bIsFinalPoint)
