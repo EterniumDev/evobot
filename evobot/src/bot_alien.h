@@ -38,6 +38,7 @@ void AlienDestroyerSetCombatModePrimaryTask(bot_t* pBot, bot_task* Task);
 
 void BotAlienSetSecondaryTask(bot_t* pBot, bot_task* Task);
 void AlienSetCombatModeSecondaryTask(bot_t* pBot, bot_task* Task);
+void AlienGorgeSetSecondaryTask(bot_t* pBot, bot_task* Task);
 void AlienBuilderSetSecondaryTask(bot_t* pBot, bot_task* Task);
 void AlienCapperSetSecondaryTask(bot_t* pBot, bot_task* Task);
 void AlienHarasserSetSecondaryTask(bot_t* pBot, bot_task* Task);

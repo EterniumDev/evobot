@@ -1046,7 +1046,7 @@ void BotAlienSetSecondaryTask(bot_t* pBot, bot_task* Task)
 {
 	if (IsPlayerGorge(pBot->pEdict))
 	{
-		AlienBuilderSetSecondaryTask(pBot, &pBot->SecondaryBotTask);
+		AlienGorgeSetSecondaryTask(pBot, &pBot->SecondaryBotTask);
 	}
 
 	switch (pBot->CurrentRole)
@@ -1060,12 +1060,39 @@ void BotAlienSetSecondaryTask(bot_t* pBot, bot_task* Task)
 	case BOT_ROLE_RES_CAPPER:
 		AlienCapperSetSecondaryTask(pBot, Task);
 		break;
+	case BOT_ROLE_BUILDER:
+		AlienBuilderSetSecondaryTask(pBot, Task);
+		break;
 	default:
 		break;
 	}
 }
 
 void AlienBuilderSetSecondaryTask(bot_t* pBot, bot_task* Task)
+{
+	if (IsPlayerGorge(pBot->pEdict))
+	{
+		edict_t* HurtNearbyPlayer = UTIL_GetClosestPlayerNeedsHealing(pBot->pEdict->v.origin, pBot->bot_team, UTIL_MetresToGoldSrcUnits(5.0f), pBot->pEdict, true);
+
+		if (!FNullEnt(HurtNearbyPlayer))
+		{
+			if (pBot->SecondaryBotTask.TaskType != TASK_HEAL)
+			{
+				pBot->SecondaryBotTask.TaskType = TASK_HEAL;
+				pBot->SecondaryBotTask.TaskTarget = HurtNearbyPlayer;
+				pBot->SecondaryBotTask.TaskLocation = HurtNearbyPlayer->v.origin;
+				pBot->SecondaryBotTask.bTaskIsUrgent = (HurtNearbyPlayer->v.health < (HurtNearbyPlayer->v.max_health * 0.5f));
+			}
+			return;
+		}
+	}
+	if (IsPlayerSkulk(pBot->pEdict))
+	{
+		AlienDestroyerSetSecondaryTask(pBot, &pBot->SecondaryBotTask);
+	}
+}
+
+void AlienGorgeSetSecondaryTask(bot_t* pBot, bot_task* Task)
 {
 	if (IsPlayerGorge(pBot->pEdict))
 	{
