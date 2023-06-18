@@ -1203,7 +1203,7 @@ void AlienDestroyerSetSecondaryTask(bot_t* pBot, bot_task* Task)
 	}
 
 	// Don't interrupt an attack task as destroyer if we're already close to attacking. Means fades and onos will focus on doing what they do best
-	if (pBot->PrimaryBotTask.TaskType == TASK_ATTACK && vDist2DSq(pBot->pEdict->v.origin, pBot->PrimaryBotTask.TaskTarget->v.origin) < sqrf(UTIL_MetresToGoldSrcUnits(10.0f))) { return; }
+	if (pBot->PrimaryBotTask.TaskType == TASK_ATTACK && vDist2DSq(pBot->pEdict->v.origin, pBot->PrimaryBotTask.TaskTarget->v.origin) < sqrf(UTIL_MetresToGoldSrcUnits(30.0f))) { return; }
 
 	edict_t* Hive = UTIL_GetNearestUndefendedStructureOfTypeUnderAttack(pBot, STRUCTURE_ALIEN_HIVE);
 
@@ -1217,7 +1217,7 @@ void AlienDestroyerSetSecondaryTask(bot_t* pBot, bot_task* Task)
 
 	if (!FNullEnt(ResourceTower))
 	{
-		bool bIsUrgent = (UTIL_GetNumPlacedStructuresOfType(STRUCTURE_ALIEN_RESTOWER) <= 3);
+		bool bIsUrgent = (UTIL_GetNumPlacedStructuresOfType(STRUCTURE_ALIEN_RESTOWER) < 3);
 		TASK_SetDefendTask(pBot, Task, ResourceTower, bIsUrgent);
 		return;
 	}
