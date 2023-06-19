@@ -2615,8 +2615,8 @@ void BotDirectLookAt(bot_t* pBot, Vector target)
 
 void UTIL_DisplayBotInfo(bot_t* pBot)
 {
-	char bufz[511];
-	char interbuff[64];
+	char bufz[611];
+	char interbuff[164];
 
 	sprintf(bufz, "Bot Role: %s\n", UTIL_BotRoleToChar(pBot->CurrentRole));
 
@@ -2656,6 +2656,17 @@ void UTIL_DisplayBotInfo(bot_t* pBot)
 		}
 		else
 		{
+			strcat(interbuff, "\n");
+		}
+
+		if (UTIL_GetFirstHiveWithoutTech() == nullptr)
+		{
+			strcat(interbuff, "All Hives Have Chosen Tech");
+			strcat(interbuff, "\n");
+		}
+		else
+		{
+			strcat(interbuff, "A Hive Has No Tech");
 			strcat(interbuff, "\n");
 		}
 

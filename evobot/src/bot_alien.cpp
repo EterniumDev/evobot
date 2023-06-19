@@ -610,6 +610,10 @@ void AlienBuilderSetPrimaryTask(bot_t* pBot, bot_task* Task)
 	if (HiveIndex)
 	{
 
+		//char bufxx[256];
+		//sprintf(bufxx, "hive index missing stuff is %d", HiveIndex->HiveResNodeIndex);
+		//BotTeamSay(pBot, 0.5f, bufxx);
+
 		if (!UTIL_ActiveHiveWithTechExists(HiveTechOne))
 		{
 			TechChamberToBuild = UTIL_GetChamberTypeForHiveTech(HiveTechOne);
@@ -637,6 +641,13 @@ void AlienBuilderSetPrimaryTask(bot_t* pBot, bot_task* Task)
 			TASK_SetBuildTask(pBot, Task, TechChamberToBuild, BuildLocation, true);
 			return;
 		}
+	}
+	else
+	{
+		//char bufxxx[256];
+		//sprintf(bufxxx, "hive no there");
+		//BotTeamSay(pBot, 0.5f, bufxxx);
+
 	}
 
 	if (!UTIL_HiveIsInProgress() && UTIL_GetNumUnbuiltHives() > 0)
@@ -1061,7 +1072,7 @@ void BotAlienSetSecondaryTask(bot_t* pBot, bot_task* Task)
 		AlienCapperSetSecondaryTask(pBot, Task);
 		break;
 	case BOT_ROLE_BUILDER:
-		AlienBuilderSetSecondaryTask(pBot, Task);
+		AlienBuilderSetSecondaryTask(pBot, &pBot->SecondaryBotTask);
 		break;
 	default:
 		break;
@@ -1088,7 +1099,81 @@ void AlienBuilderSetSecondaryTask(bot_t* pBot, bot_task* Task)
 	}
 	if (IsPlayerSkulk(pBot->pEdict))
 	{
-		AlienDestroyerSetSecondaryTask(pBot, &pBot->SecondaryBotTask);
+		edict_t* EnemyResTower = UTIL_GetNearestStructureOfTypeInLocation(STRUCTURE_MARINE_RESTOWER, pBot->pEdict->v.origin, UTIL_MetresToGoldSrcUnits(200.0f), false, false);
+
+		if (!FNullEnt(EnemyResTower))
+		{
+			// Don't set a new attack or move task if we have one already
+			if (Task->TaskType == TASK_ATTACK && Task->TaskTarget == EnemyResTower) { return; }
+			TASK_SetAttackTask(pBot, Task, EnemyResTower, false);
+			return;
+		}
+		
+
+		// Focus on taking out phase gates to prevent reinforcements
+		edict_t* PhaseGate = UTIL_GetFirstCompletedStructureOfType(STRUCTURE_MARINE_PHASEGATE);
+
+		if (PhaseGate)
+		{
+			TASK_SetAttackTask(pBot, Task, PhaseGate, false);
+			return;
+		}
+
+		// Taking out arms labs gimps marines, make that next priority
+		edict_t* Armslab = UTIL_GetFirstCompletedStructureOfType(STRUCTURE_MARINE_ARMSLAB);
+
+		if (Armslab)
+		{
+			TASK_SetAttackTask(pBot, Task, Armslab, false);
+			return;
+		}
+
+		// Then observatories
+		edict_t* Obs = UTIL_GetFirstCompletedStructureOfType(STRUCTURE_MARINE_OBSERVATORY);
+
+		if (Obs)
+		{
+			TASK_SetAttackTask(pBot, Task, Obs, false);
+			return;
+		}
+
+		// Then infantry portals
+		edict_t* InfPortal = UTIL_GetFirstCompletedStructureOfType(STRUCTURE_MARINE_INFANTRYPORTAL);
+
+		if (InfPortal)
+		{
+			TASK_SetAttackTask(pBot, Task, InfPortal, false);
+			return;
+		}
+
+		// And finally, the comm chair
+		edict_t* CommChair = UTIL_GetCommChair();
+
+		if (CommChair)
+		{
+			TASK_SetAttackTask(pBot, Task, CommChair, false);
+			return;
+		}
+
+		// Hunt down any last straggling marines once everything destroyed (assuming they don't just drop to the ready room and surrender)
+		edict_t* EnemyPlayer = UTIL_GetNearestPlayerOfTeamInArea(pBot->pEdict->v.origin, UTIL_MetresToGoldSrcUnits(500.0f), MARINE_TEAM, nullptr, CLASS_NONE);
+		if (!FNullEnt(EnemyPlayer))
+		{
+			TASK_SetAttackTask(pBot, Task, EnemyPlayer, false);
+			return;
+		}
+	}
+	else
+	{
+		edict_t* EnemyResTower = UTIL_GetNearestStructureOfTypeInLocation(STRUCTURE_MARINE_RESTOWER, pBot->pEdict->v.origin, UTIL_MetresToGoldSrcUnits(200.0f), false, false);
+
+		if (!FNullEnt(EnemyResTower))
+		{
+			// Don't set a new attack or move task if we have one already
+			if (Task->TaskType == TASK_ATTACK && Task->TaskTarget == EnemyResTower) { return; }
+			TASK_SetAttackTask(pBot, Task, EnemyResTower, false);
+			return;
+		}
 	}
 }
 
@@ -2331,30 +2416,34 @@ BotRole AlienGetBestBotRole(bot_t* pBot)
 
 	if (NumPlayersOnTeam == 0) { return BOT_ROLE_DESTROYER; } // Shouldn't ever happen but let's not risk a divide by zero later on...
 
-	// If we have enough resources, or nearly enough, and we don't have any fades already on the team then prioritise this
-	if (GetPlayerResources(pBot->pEdict) >= ((float)kFadeEvolutionCost * 0.8f))
+	//now bots will only go lerk or fade if the hives have tech selected
+	if (UTIL_GetFirstHiveWithoutTech() == nullptr)
 	{
-		if (GetPlayerResources(pBot->pEdict) > 60) { return BOT_ROLE_DESTROYER; }
-
-		int NumFadesAndOnos = GAME_GetNumPlayersOnTeamOfClass(ALIEN_TEAM, CLASS_FADE) + GAME_GetNumPlayersOnTeamOfClass(ALIEN_TEAM, CLASS_ONOS);
-		int NumDestroyers = GAME_GetBotsWithRoleType(BOT_ROLE_DESTROYER, ALIEN_TEAM, pBot->pEdict);
-		int Existing = NumPlayersOnTeam - NumDestroyers;
-
-		if (Existing > 0 && ((float)NumFadesAndOnos / (float)Existing < 0.33f))
+		// If we have enough resources, or nearly enough, and we don't have any fades already on the team then prioritise this
+		if (GetPlayerResources(pBot->pEdict) >= ((float)kFadeEvolutionCost * 0.8f))
 		{
-			return BOT_ROLE_DESTROYER;
+			if (GetPlayerResources(pBot->pEdict) > 60) { return BOT_ROLE_DESTROYER; }
+
+			int NumFadesAndOnos = GAME_GetNumPlayersOnTeamOfClass(ALIEN_TEAM, CLASS_FADE) + GAME_GetNumPlayersOnTeamOfClass(ALIEN_TEAM, CLASS_ONOS);
+			int NumDestroyers = GAME_GetBotsWithRoleType(BOT_ROLE_DESTROYER, ALIEN_TEAM, pBot->pEdict);
+			int Existing = NumPlayersOnTeam - NumDestroyers;
+
+			if (Existing > 0 && ((float)NumFadesAndOnos / (float)Existing < 0.33f))
+			{
+				return BOT_ROLE_DESTROYER;
+			}
 		}
-	}
 
-	// If we have enough resources, or nearly enough, and we don't have any lerks already on the team then prioritise this
-	if (GetPlayerResources(pBot->pEdict) >= ((float)kLerkEvolutionCost * 0.8f))
-	{
-		int NumLerks = GAME_GetNumPlayersOnTeamOfClass(ALIEN_TEAM, CLASS_LERK);
-		int NumHarassers = GAME_GetBotsWithRoleType(BOT_ROLE_HARASS, ALIEN_TEAM, pBot->pEdict);
-
-		if (NumLerks + NumHarassers < 1)
+		// If we have enough resources, or nearly enough, and we don't have any lerks already on the team then prioritise this
+		if (GetPlayerResources(pBot->pEdict) >= ((float)kLerkEvolutionCost * 0.8f))
 		{
-			return BOT_ROLE_HARASS;
+			int NumLerks = GAME_GetNumPlayersOnTeamOfClass(ALIEN_TEAM, CLASS_LERK);
+			int NumHarassers = GAME_GetBotsWithRoleType(BOT_ROLE_HARASS, ALIEN_TEAM, pBot->pEdict);
+
+			if (NumLerks + NumHarassers < 1)
+			{
+				return BOT_ROLE_HARASS;
+			}
 		}
 	}
 
