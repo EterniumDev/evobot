@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="Y:\EvobotNSGithub\Build\CMakeFiles\f454c5adecc2d31e666e59234191b0ac\generate.stamp.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{22B9936D-731C-3414-9937-6E7A063B1B46}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
