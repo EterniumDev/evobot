@@ -513,7 +513,6 @@ BotAttackResult PerformAttackLOSCheck(bot_t* pBot, const NSWeapon Weapon, const 
 		return ATTACK_SUCCESS;
 	}
 
-
 	TraceResult hit;
 
 	Vector StartTrace = pBot->CurrentEyePosition;
@@ -769,7 +768,6 @@ void BotShootLocation(bot_t* pBot, NSWeapon AttackWeapon, const Vector TargetLoc
 	}
 }
 
-
 void BotShootTarget(bot_t* pBot, NSWeapon AttackWeapon, edict_t* Target)
 {
 	if (FNullEnt(Target) || (Target->v.deadflag != DEAD_NO)) { return; }
@@ -942,31 +940,6 @@ void BotShootTarget(bot_t* pBot, NSWeapon AttackWeapon, edict_t* Target)
 
 	Vector AimDir = UTIL_GetForwardVector(pBot->pEdict->v.v_angle);
 
-//WE MAY NOT NEED THIS ANYMORE
-	if (AttackWeapon == WEAPON_LERK_SPORES || AttackWeapon == WEAPON_LERK_UMBRA)
-	{
-		if ((gpGlobals->time - pBot->current_weapon.LastFireTime) < pBot->current_weapon.MinRefireTime)
-		{
-			return;
-		}
-
-		TraceResult Hit;
-		Vector TraceEnd = pBot->CurrentEyePosition + (AimDir * 3000.0f);
-
-		UTIL_TraceLine(pBot->CurrentEyePosition, TraceEnd, dont_ignore_monsters, dont_ignore_glass, pBot->pEdict->v.pContainingEntity, &Hit);
-
-		if (Hit.flFraction >= 1.0f) { return; }
-
-		if (vDist3DSq(Hit.vecEndPos, Target->v.origin) <= sqrf(kSporeCloudRadius))
-
-		{
-			pBot->pEdict->v.button |= IN_ATTACK;
-			pBot->current_weapon.LastFireTime = gpGlobals->time;
-		}
-
-		return;
-	}
-
 	float AimDot = UTIL_GetDotProduct(AimDir, TargetAimDir);
 
 	// We can be less accurate with spores and umbra since they have AoE effects
@@ -980,7 +953,6 @@ void BotShootTarget(bot_t* pBot, NSWeapon AttackWeapon, edict_t* Target)
 			pBot->current_weapon.LastFireTime = gpGlobals->time;
 		}
 	}
-
 }
 
 void BotAttackTarget(bot_t* pBot, edict_t* Target)
@@ -1261,7 +1233,6 @@ void UTIL_ClearAllBotData(bot_t* pBot)
 	pBot->CombatLevel = 1;
 	pBot->CombatUpgradeMask = 0;
 
-
 	if (pBot->logFile)
 	{
 		fflush(pBot->logFile);
@@ -1490,7 +1461,6 @@ void BotUpdateDesiredViewRotation(bot_t* pBot)
 	}
 
 
-
 	// We once again clamp everything to valid values in case the offsets we applied above took us above that
 
 	if (pBot->DesiredLookDirection.y > 180)
@@ -1538,8 +1508,6 @@ void BotUpdateView(bot_t* pBot)
 			BotClearEnemyTrackingInfo(&pBot->TrackedEnemies[i]);
 			continue;
 		}
-
-		EnemyTeam = clients[i]->v.team;
 
 		enemy_status* TrackingInfo = &pBot->TrackedEnemies[i];
 
@@ -2016,7 +1984,6 @@ int BotGetNextEnemyTarget(bot_t* pBot)
 	{
 		if (!pBot->TrackedEnemies[i].bIsAwareOfPlayer) { continue; }
 
-
 		enemy_status* TrackingInfo = &pBot->TrackedEnemies[i];
 
 		float Dist = vDist2DSq(TrackingInfo->LastSeenLocation, pBot->pEdict->v.origin);
@@ -2064,7 +2031,6 @@ void DroneThink(bot_t* pBot)
 	if (pBot->CurrentTask->TaskType != TASK_NONE)
 	{
 		BotProgressTask(pBot, pBot->CurrentTask);
-
 	}
 
 	//if (pBot->BotNavInfo.PathSize > 0)
@@ -2101,6 +2067,7 @@ void CustomThink(bot_t* pBot)
 			
 		}
 	}
+
 }
 
 void TestAimThink(bot_t* pBot)
@@ -2398,7 +2365,6 @@ void DEBUG_BotMeleeTarget(bot_t* pBot, edict_t* Target)
 	}
 }
 
-
 int GetMarineCombatUpgradeCost(const CombatModeMarineUpgrade Upgrade)
 {
 	switch (Upgrade)
@@ -2490,7 +2456,6 @@ int GetBotSpentCombatPoints(bot_t* pBot)
 	NumSpentPoints += NumUpgrades;
 
 	// Return the total amount of points they've spent!
-
 	return NumSpentPoints;
 }
 
@@ -2657,17 +2622,6 @@ void UTIL_DisplayBotInfo(bot_t* pBot)
 		}
 		else
 		{
-			strcat(interbuff, "\n");
-		}
-
-		if (UTIL_GetFirstHiveWithoutTech() == nullptr)
-		{
-			strcat(interbuff, "All Hives Have Chosen Tech");
-			strcat(interbuff, "\n");
-		}
-		else
-		{
-			strcat(interbuff, "A Hive Has No Tech");
 			strcat(interbuff, "\n");
 		}
 

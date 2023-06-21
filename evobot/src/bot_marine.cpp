@@ -486,7 +486,7 @@ void MarineSetSecondaryTask(bot_t* pBot, bot_task* Task)
 
 	edict_t* UnbuiltStructure = UTIL_FindClosestMarineStructureUnbuiltWithoutBuilders(pBot, 2, pBot->pEdict->v.origin, UTIL_MetresToGoldSrcUnits(30.0f), true);
 
-	if (!FNullEnt(UnbuiltStructure) && !UTIL_StructureIsRecycling(UnbuiltStructure))
+	if (!FNullEnt(UnbuiltStructure))
 	{
 		TASK_SetBuildTask(pBot, Task, UnbuiltStructure, true);
 		return;
@@ -586,7 +586,7 @@ void MarineSweeperSetSecondaryTask(bot_t* pBot, bot_task* Task)
 
 	edict_t* UnbuiltStructure = UTIL_FindClosestMarineStructureUnbuilt(pBot->pEdict->v.origin, UTIL_MetresToGoldSrcUnits(30.0f), true);
 
-	if (!FNullEnt(UnbuiltStructure) && !UTIL_StructureIsRecycling(UnbuiltStructure))
+	if (!FNullEnt(UnbuiltStructure))
 	{
 		TASK_SetBuildTask(pBot, Task, UnbuiltStructure, true);
 		return;
@@ -628,7 +628,7 @@ void MarineCapperSetSecondaryTask(bot_t* pBot, bot_task* Task)
 
 	edict_t* UnbuiltStructure = UTIL_FindClosestMarineStructureUnbuilt(pBot->pEdict->v.origin, UTIL_MetresToGoldSrcUnits(10.0f), false);
 
-	if (!FNullEnt(UnbuiltStructure) && !UTIL_StructureIsRecycling(UnbuiltStructure))
+	if (!FNullEnt(UnbuiltStructure))
 	{
 		float Dist = vDist2D(pBot->pEdict->v.origin, UnbuiltStructure->v.origin) - 1.0f;
 
@@ -683,7 +683,7 @@ void MarineAssaultSetSecondaryTask(bot_t* pBot, bot_task* Task)
 
 	edict_t* UnbuiltStructure = UTIL_FindClosestMarineStructureUnbuilt(pBot->pEdict->v.origin, UTIL_MetresToGoldSrcUnits(10.0f), false);
 
-	if (!FNullEnt(UnbuiltStructure) && !UTIL_StructureIsRecycling(UnbuiltStructure))
+	if (!FNullEnt(UnbuiltStructure))
 	{
 		float Dist = vDist2D(pBot->pEdict->v.origin, UnbuiltStructure->v.origin) - 1.0f;
 
@@ -807,7 +807,6 @@ bool MarineCombatThink(bot_t* pBot)
 
 	edict_t* CurrentEnemy = pBot->TrackedEnemies[pBot->CurrentEnemy].EnemyEdict;
 	enemy_status* TrackedEnemyRef = &pBot->TrackedEnemies[pBot->CurrentEnemy];
-
 
 	// ENEMY IS OUT OF SIGHT
 
@@ -1191,24 +1190,7 @@ void MarineHuntEnemy(bot_t* pBot, enemy_status* TrackedEnemy)
 
 	if (BotGetCurrentWeaponClipAmmo(pBot) < BotGetCurrentWeaponMaxClipAmmo(pBot) && BotGetCurrentWeaponReserveAmmo(pBot) > 0)
 	{
-
-//this was all removed by NEO, idk why
-		//if (TrackedEnemy->bIsTracked)
-		//{
-		//	if (vDist2DSq(pBot->pEdict->v.origin, LastSeenLocation) >= sqrf(UTIL_MetresToGoldSrcUnits(5.0f)))
-		//	{
-		//		BotReloadWeapons(pBot);
-		//	}
-		//}
-		//else
-		//{
-		//	float ReloadTime = BotGetCurrentWeaponClipAmmo(pBot) < (BotGetCurrentWeaponMaxClipAmmo(pBot) * 0.5f) ? 2.0f : 5.0f;
-		//	if (gpGlobals->time - LastSeenTime >= ReloadTime)
-		//	{
-		//		BotReloadWeapons(pBot);
-		//	}
-		//}
-
+		
 
 	}
 
@@ -1221,7 +1203,6 @@ void MarineHuntEnemy(bot_t* pBot, enemy_status* TrackedEnemy)
 	
 	return;
 }
-
 
 void MarineCombatModeCheckWantsAndNeeds(bot_t* pBot)
 {
@@ -1545,7 +1526,6 @@ BotRole MarineGetBestBotRole(const bot_t* pBot)
 
 	return BOT_ROLE_ASSAULT;
 }
-
 
 CombatModeMarineUpgrade MarineGetNextCombatUpgrade(bot_t* pBot)
 {

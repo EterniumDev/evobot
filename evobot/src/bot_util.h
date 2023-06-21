@@ -62,7 +62,6 @@ void BotJump(bot_t* pBot);
 void BotShootTarget(bot_t* pBot, NSWeapon AttackWeapon, edict_t* Target);
 void BotShootLocation(bot_t* pBot, NSWeapon AttackWeapon, const Vector TargetLocation);
 
-
 void BotAttackTarget(bot_t* pBot, edict_t* Target);
 
 BotAttackResult PerformAttackLOSCheck(bot_t* pBot, const NSWeapon Weapon, const edict_t* Target);
@@ -167,7 +166,6 @@ int GetImpulseForMarineCombatUpgrade(const CombatModeMarineUpgrade Upgrade);
 int GetImpulseForAlienCombatUpgrade(const CombatModeAlienUpgrade Upgrade);
 
 // If the observer is spectating a bot, it will return the bot reference (or nullptr if not spectating a bot)
-
 bot_t* UTIL_GetSpectatedBot(const edict_t* Observer);
 
 bool BotHasTaskOfType(bot_t* pBot, BotTaskType TaskType);

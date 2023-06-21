@@ -565,14 +565,14 @@ bool UTIL_IsAlienBuildTaskStillValid(bot_t* pBot, bot_task* Task)
 		{
 			edict_t* OtherGorge = UTIL_GetNearestPlayerOfClass(Task->TaskLocation, CLASS_GORGE, UTIL_MetresToGoldSrcUnits(5.0f), pBot->pEdict);
 
-			if (!FNullEnt(OtherGorge) && (GetPlayerResources(OtherGorge) >= (kResourceTowerCost - 2) && vDist2DSq(OtherGorge->v.origin, Task->TaskLocation) < vDist2DSq(pBot->pEdict->v.origin, Task->TaskLocation)))
+			if (!FNullEnt(OtherGorge) && (GetPlayerResources(OtherGorge) >= kResourceTowerCost && vDist2DSq(OtherGorge->v.origin, Task->TaskLocation) < vDist2DSq(pBot->pEdict->v.origin, Task->TaskLocation)))
 			{
 				return false;
 			}
 
 			edict_t* Egg = UTIL_GetNearestPlayerOfClass(Task->TaskLocation, CLASS_EGG, UTIL_MetresToGoldSrcUnits(5.0f), pBot->pEdict);
 
-			if (!FNullEnt(Egg) && (GetPlayerResources(Egg) >= (kResourceTowerCost - 2) && vDist2DSq(Egg->v.origin, Task->TaskLocation) < vDist2DSq(pBot->pEdict->v.origin, Task->TaskLocation)))
+			if (!FNullEnt(Egg) && (GetPlayerResources(Egg) >= kResourceTowerCost && vDist2DSq(Egg->v.origin, Task->TaskLocation) < vDist2DSq(pBot->pEdict->v.origin, Task->TaskLocation)))
 			{
 				return false;
 			}
@@ -1060,7 +1060,6 @@ void BotProgressEvolveTask(bot_t* pBot, bot_task* Task)
 		}
 		return;
 	}
-
 
 	if (Task->TaskLocation != ZERO_VECTOR)
 	{
