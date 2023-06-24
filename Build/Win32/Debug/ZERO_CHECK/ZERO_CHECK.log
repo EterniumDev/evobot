@@ -1,1 +1,8 @@
-﻿
+﻿  Checking Build System
+  CMake is re-running because Y:/EvobotNSGithub/Build/evobot/CMakeFiles/generate.stamp is out-of-date.
+    the file 'Y:/EvobotNSGithub/evobot/CMakeLists.txt'
+    is newer than 'Y:/EvobotNSGithub/Build/evobot/CMakeFiles/generate.stamp.depend'
+    result='-1'
+  -- Configuring done (0.2s)
+  -- Generating done (0.3s)
+  -- Build files have been written to: Y:/EvobotNSGithub/Build

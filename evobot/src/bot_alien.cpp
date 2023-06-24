@@ -2152,9 +2152,11 @@ int GetDesiredAlienUpgrade(const bot_t* pBot, const HiveTechStatus TechType)
 		switch (pBot->bot_ns_class)
 		{
 		case CLASS_SKULK:
+			return IMPULSE_ALIEN_UPGRADE_CARAPACE;
 		case CLASS_LERK:
-			return IMPULSE_ALIEN_UPGRADE_CARAPACE; // Lerks are fragile so best get carapace while the bot is still not great at staying alive with them...
+			return IMPULSE_ALIEN_UPGRADE_REDEMPTION; // Lerks are fragile so best get carapace while the bot is still not great at staying alive with them...
 		case CLASS_GORGE:
+			return IMPULSE_ALIEN_UPGRADE_REGENERATION;
 		case CLASS_FADE:
 		{
 			if (randbool())
@@ -2163,34 +2165,20 @@ int GetDesiredAlienUpgrade(const bot_t* pBot, const HiveTechStatus TechType)
 			}
 			else
 			{
-				if (PlayerHasWeapon(pBot->pEdict, WEAPON_FADE_METABOLIZE))
-				{
-					return IMPULSE_ALIEN_UPGRADE_REDEMPTION;
-				}
-				else
-				{
-					if (randbool())
-					{
-						return IMPULSE_ALIEN_UPGRADE_REGENERATION;
-					}
-					else
-					{
-						return IMPULSE_ALIEN_UPGRADE_REDEMPTION;
-					}
-				}
+				return IMPULSE_ALIEN_UPGRADE_REGENERATION;
 			}
 		}
 		case CLASS_ONOS:
 		{
 			if (randbool())
 			{
-				return IMPULSE_ALIEN_UPGRADE_CARAPACE;
+				return IMPULSE_ALIEN_UPGRADE_REGENERATION;
 			}
 			else
 			{
 				if (randbool())
 				{
-					return IMPULSE_ALIEN_UPGRADE_REGENERATION;
+					return IMPULSE_ALIEN_UPGRADE_CARAPACE;
 				}
 				else
 				{
@@ -2217,23 +2205,17 @@ int GetDesiredAlienUpgrade(const bot_t* pBot, const HiveTechStatus TechType)
 			}
 			else
 			{
-				return IMPULSE_ALIEN_UPGRADE_SILENCE;
+				return IMPULSE_ALIEN_UPGRADE_ADRENALINE;
 			}
 		}
 		case CLASS_LERK:
 			return IMPULSE_ALIEN_UPGRADE_ADRENALINE;
 		case CLASS_GORGE:
+			return IMPULSE_ALIEN_UPGRADE_CELERITY;
 		case CLASS_FADE:
 		case CLASS_ONOS:
 		{
-			if (randbool())
-			{
-				return IMPULSE_ALIEN_UPGRADE_CELERITY;
-			}
-			else
-			{
-				return IMPULSE_ALIEN_UPGRADE_ADRENALINE;
-			}
+			return IMPULSE_ALIEN_UPGRADE_ADRENALINE;
 		}
 		default:
 			return 0;
@@ -2246,7 +2228,7 @@ int GetDesiredAlienUpgrade(const bot_t* pBot, const HiveTechStatus TechType)
 		switch (pBot->bot_ns_class)
 		{
 		case CLASS_GORGE:
-			return IMPULSE_ALIEN_UPGRADE_CLOAK;
+			return IMPULSE_ALIEN_UPGRADE_FOCUS;
 		case CLASS_SKULK:
 		case CLASS_FADE:
 		case CLASS_LERK:
