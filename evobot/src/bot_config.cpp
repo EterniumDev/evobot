@@ -681,7 +681,7 @@ int CONFIG_GetNSVersion()
     return NSVersion;
 }
 
-const char* UTIL_LookUpLocationName(const char* InputName)
+void UTIL_LookUpLocationName(const char* InputName, char* Result)
 {
     char filename[256];
 
@@ -710,18 +710,20 @@ const char* UTIL_LookUpLocationName(const char* InputName)
         }
     }
 
-    auto delimiterPos = InputString.find("-");
+    auto delimiterPos = InputString.find("Hive -");
 
     if (delimiterPos != std::string::npos)
     {
-        auto AreaName = InputString.substr(delimiterPos + 1);
+        auto AreaName = InputString.substr(delimiterPos + 6);
 
         AreaName.erase(0, AreaName.find_first_not_of(" \r\n\t\v\f"));
 
-        return AreaName.c_str();
+        sprintf(Result, "%s", AreaName.c_str());
+
+        return;
     }
 
-    return InputString.c_str();
+    sprintf(Result, "%s", InputString.c_str());
 }
 
 void CONFIG_PopulateBotNames()
