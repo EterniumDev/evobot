@@ -969,6 +969,7 @@ EXPORTS
 	?BotProgressResupplyTask@@YAXPAU_BOT_T@@PAU_BOT_TASK@@@Z
 	?BotProgressTakeCommandTask@@YAXPAU_BOT_T@@@Z
 	?BotProgressTask@@YAXPAU_BOT_T@@PAU_BOT_TASK@@@Z
+	?BotProgressUseTask@@YAXPAU_BOT_T@@PAU_BOT_TASK@@@Z
 	?BotRecalcPath@@YA_NPAU_BOT_T@@VVector@@@Z
 	?BotReceiveAttackOrder@@YAXPAU_BOT_T@@W4AvHUser3@@VVector@@@Z
 	?BotReceiveBuildOrder@@YAXPAU_BOT_T@@W4AvHUser3@@VVector@@@Z
@@ -995,7 +996,7 @@ EXPORTS
 	?BotUpdateView@@YAXPAU_BOT_T@@@Z
 	?BotUpdateViewFrustum@@YAXPAU_BOT_T@@@Z
 	?BotUpdateViewRotation@@YAXPAU_BOT_T@@M@Z
-	?BotUseObject@@YAXPAU_BOT_T@@PAUedict_s@@_N@Z
+	?BotUseObject@@YA_NPAU_BOT_T@@PAUedict_s@@_N@Z
 	?BotWithBuildTaskExists@@YA_NW4NSStructureType@@@Z
 	?CONFIG_BotSkillLevelExists@@YA_NPBD@Z
 	?CONFIG_GetAlienTeamSizeForMap@@YAHPBD@Z
@@ -1022,6 +1023,7 @@ EXPORTS
 	?CalcNumAlienBuildersRequired@@YAHXZ
 	?CanBotLeap@@YA_NPAU_BOT_T@@@Z
 	?CheckAndHandleBreakableObstruction@@YAXPAU_BOT_T@@VVector@@1@Z
+	?CheckAndHandleDoorObstruction@@YAXPAU_BOT_T@@VVector@@1@Z
 	?ClampAngle@@YAXAAM@Z
 	?ClearBotMovement@@YAXPAU_BOT_T@@@Z
 	?ClearBotPath@@YAXPAU_BOT_T@@@Z
@@ -1105,6 +1107,7 @@ EXPORTS
 	?GAME_GetDebugMode@@YA?AW4_EVODEBUGMODE@@XZ
 	?GAME_GetGameMode@@YA?AW4NSGameMode@@XZ
 	?GAME_GetListenServerEdict@@YAPAUedict_s@@XZ
+	?GAME_GetNumAlivePlayersOnTeam@@YAHH@Z
 	?GAME_GetNumBotsInGame@@YAHXZ
 	?GAME_GetNumBotsOnTeam@@YAHH@Z
 	?GAME_GetNumHumansOnTeam@@YAHH@Z
@@ -1294,6 +1297,7 @@ EXPORTS
 	?TASK_SetDefendTask@@YAXPAU_BOT_T@@PAU_BOT_TASK@@PAUedict_s@@_N@Z
 	?TASK_SetEvolveTask@@YAXPAU_BOT_T@@PAU_BOT_TASK@@VVector@@H_N@Z
 	?TASK_SetMoveTask@@YAXPAU_BOT_T@@PAU_BOT_TASK@@VVector@@_N@Z
+	?TASK_SetUseTask@@YAXPAU_BOT_T@@PAU_BOT_TASK@@PAUedict_s@@_N@Z
 	?TestAimThink@@YAXPAU_BOT_T@@@Z
 	?TestGuardThink@@YAXPAU_BOT_T@@@Z
 	?TestNavThink@@YAXPAU_BOT_T@@@Z
@@ -1397,6 +1401,7 @@ EXPORTS
 	?UTIL_GetCostOfStructureType@@YAHW4NSStructureType@@@Z
 	?UTIL_GetCrossProduct@@YA?AVVector@@V1@0@Z
 	?UTIL_GetDistanceToPolygon2DSq@@YAMVVector@@PBV1@H@Z
+	?UTIL_GetDoorBlockingPathPoint@@YAPAUedict_s@@PAU_BOT_PATH_NODE@@PAU1@@Z
 	?UTIL_GetDotProduct2D@@YAMVVector@@0@Z
 	?UTIL_GetDotProduct@@YAMVVector@@0@Z
 	?UTIL_GetEntityGroundLocation@@YA?AVVector@@PBUedict_s@@@Z
@@ -1434,6 +1439,7 @@ EXPORTS
 	?UTIL_GetNearestAvailableResourcePointIndex@@YAHABVVector@@@Z
 	?UTIL_GetNearestBuiltHiveToLocation@@YAPBU_HIVE_DEFINITION_T@@VVector@@@Z
 	?UTIL_GetNearestCappedResNodeToLocation@@YAPBU_RESOURCE_NODE@@VVector@@H_N@Z
+	?UTIL_GetNearestDoorTrigger@@YAPAUedict_s@@VVector@@PBU_NAV_DOOR@@PAU1@@Z
 	?UTIL_GetNearestEquipment@@YAPAUedict_s@@VVector@@M_N@Z
 	?UTIL_GetNearestHiveAtLocation@@YAPBU_HIVE_DEFINITION_T@@VVector@@@Z
 	?UTIL_GetNearestHiveOfStatus@@YAPBU_HIVE_DEFINITION_T@@VVector@@W4HiveStatusType@@@Z
@@ -1552,6 +1558,7 @@ EXPORTS
 	?UTIL_IsMoveTaskStillValid@@YA_NPAU_BOT_T@@PAU_BOT_TASK@@@Z
 	?UTIL_IsMoveTaskUrgent@@YA_NPAU_BOT_T@@PAU_BOT_TASK@@@Z
 	?UTIL_IsNearActiveHive@@YA_NVVector@@M@Z
+	?UTIL_IsPathBlockedByDoor@@YA_NVVector@@0PAUedict_s@@@Z
 	?UTIL_IsPlayerOfTeamInArea@@YA_NVVector@@MHPAUedict_s@@W4NSPlayerClass@@@Z
 	?UTIL_IsResupplyTaskStillValid@@YA_NPAU_BOT_T@@PAU_BOT_TASK@@@Z
 	?UTIL_IsStructureElectrified@@YA_NPBUedict_s@@@Z
@@ -1573,7 +1580,7 @@ EXPORTS
 	?UTIL_LinkPlacedStructureToAction@@YAXPAU_BOT_T@@PAU_BUILDABLE_STRUCTURE@@@Z
 	?UTIL_LinkTriggerToDoor@@YAXPBUedict_s@@PAU_NAV_DOOR@@@Z
 	?UTIL_LogPrintf@@YAXPADZZ
-	?UTIL_LookUpLocationName@@YAPBDPBD@Z
+	?UTIL_LookUpLocationName@@YAXPBDPAD@Z
 	?UTIL_MarineFindUnclaimedResNodeNearestLocation@@YAPBU_RESOURCE_NODE@@PBU_BOT_T@@ABVVector@@M@Z
 	?UTIL_MarineResearchIsAvailable@@YA_NW4NSResearch@@@Z
 	?UTIL_MetresToGoldSrcUnits@@YAMM@Z

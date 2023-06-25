@@ -1,4 +1,4 @@
-﻿  bot_alien.cpp
+﻿  bot_commander.cpp
   Auto build dll exports
      Creating library Y:/EvobotNSGithub/Build/Debug/evobot_mm.lib and object Y:/EvobotNSGithub/Build/Debug/evobot_mm.exp
   evobot.vcxproj -> Y:\EvobotNSGithub\Build\Debug\evobot_mm.dll
