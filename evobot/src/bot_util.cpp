@@ -2038,10 +2038,7 @@ void DroneThink(bot_t* pBot)
 		BotProgressTask(pBot, pBot->CurrentTask);
 	}
 
-	//if (pBot->BotNavInfo.PathSize > 0)
-	//{
-	//	DEBUG_DrawPath(pBot->BotNavInfo.CurrentPath, pBot->BotNavInfo.PathSize, 0.0f);
-	//}
+	//DEBUG_DrawPath(pBot->BotNavInfo.CurrentPath, pBot->BotNavInfo.PathSize, 0.0f);
 }
 
 void CustomThink(bot_t* pBot)
