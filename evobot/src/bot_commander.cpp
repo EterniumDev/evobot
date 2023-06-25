@@ -2364,14 +2364,23 @@ void CommanderQueueNextAction(bot_t* pBot)
 		}
 	}
 
+	int NumMarines = GAME_GetNumPlayersOnTeam(MARINE_TEAM);
+	int NumMarinesAlive = GAME_GetNumAlivePlayersOnTeam(MARINE_TEAM);
+	int NumPlacedPortals = UTIL_GetStructureCountOfType(STRUCTURE_MARINE_INFANTRYPORTAL);
+	int NumBuiltPortals = UTIL_GetNumBuiltStructuresOfType(STRUCTURE_MARINE_INFANTRYPORTAL);
+
+	if (NumMarinesAlive <= 0 && NumMarines >= 1 && NumPlacedPortals >= 1 && NumBuiltPortals <= 0)
+	{
+		BotTeamSay(pBot, 0.5f, "Everyone is dead, I'm going to build an infantry portal!");
+		FakeClientCommand(pBot->pEdict, "stopcommandermode", NULL, NULL);
+	}
+
 	/* All the highest-priority tasks. Infantry portals, base armoury, arms lab, phase gate etc. */
 	int CurrentPriority = 0;
-
 	int NumPlacedOrQueuedPortals = UTIL_GetNumPlacedOrQueuedStructuresOfType(pBot, STRUCTURE_MARINE_INFANTRYPORTAL);
 
+	
 	int PortalsNeeded = 2;
-
-	int NumMarines = GAME_GetNumPlayersOnTeam(MARINE_TEAM);
 
 	PortalsNeeded = __max(PortalsNeeded, floorf(((float)NumMarines-1.0f)/2.0f));
 

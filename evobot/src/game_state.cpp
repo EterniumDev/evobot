@@ -213,6 +213,20 @@ int GAME_GetNumPlayersOnTeam(const int Team)
 	return Result;
 }
 
+int GAME_GetNumAlivePlayersOnTeam(const int Team)
+{
+	int Result = 0;
+
+	for (int i = 0; i < MAX_CLIENTS; i++)
+	{
+		if (!FNullEnt(clients[i]) && IsPlayerActiveInGame(clients[i]) && clients[i]->v.team == Team) { Result++; }
+	}
+
+	return Result;
+}
+
+
+
 int GAME_GetNumHumansOnTeam(const int Team)
 {
 	int Result = 0;
