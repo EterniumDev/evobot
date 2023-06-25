@@ -969,6 +969,7 @@ EXPORTS
 	?BotProgressResupplyTask@@YAXPAU_BOT_T@@PAU_BOT_TASK@@@Z
 	?BotProgressTakeCommandTask@@YAXPAU_BOT_T@@@Z
 	?BotProgressTask@@YAXPAU_BOT_T@@PAU_BOT_TASK@@@Z
+	?BotProgressTouchTask@@YAXPAU_BOT_T@@PAU_BOT_TASK@@@Z
 	?BotProgressUseTask@@YAXPAU_BOT_T@@PAU_BOT_TASK@@@Z
 	?BotRecalcPath@@YA_NPAU_BOT_T@@VVector@@@Z
 	?BotReceiveAttackOrder@@YAXPAU_BOT_T@@W4AvHUser3@@VVector@@@Z
@@ -1137,6 +1138,7 @@ EXPORTS
 	?GetBotMarineSecondaryWeapon@@YA?AW4NSWeapon@@PBU_BOT_T@@@Z
 	?GetBotPointer@@YAPAU_BOT_T@@PBUedict_s@@@Z
 	?GetBotPointerThirdParty@@YAPAU_BOT_T@@PBUedict_s@@@Z
+	?GetBotPrimaryWeapon@@YA?AW4NSWeapon@@PBU_BOT_T@@@Z
 	?GetBotSpentCombatPoints@@YAHPAU_BOT_T@@@Z
 	?GetCommanderViewZHeight@@YAMXZ
 	?GetDesiredAlienUpgrade@@YAHPBU_BOT_T@@W4HiveTechStatus@@@Z
@@ -1217,6 +1219,7 @@ EXPORTS
 	?IsPlayerSkulk@@YA_NPBUedict_s@@@Z
 	?IsPlayerSpectator@@YA_NPBUedict_s@@@Z
 	?IsPlayerStunned@@YA_NPBUedict_s@@@Z
+	?IsPlayerTouchingEntity@@YA_NPBUedict_s@@0@Z
 	?IsPlayerVisibleToBot@@YA_NPAU_BOT_T@@PAUedict_s@@@Z
 	?JumpMove@@YAXPAU_BOT_T@@VVector@@1@Z
 	?KeyValue@@YAXPAUedict_s@@PAUKeyValueData_s@@@Z
@@ -1297,6 +1300,7 @@ EXPORTS
 	?TASK_SetDefendTask@@YAXPAU_BOT_T@@PAU_BOT_TASK@@PAUedict_s@@_N@Z
 	?TASK_SetEvolveTask@@YAXPAU_BOT_T@@PAU_BOT_TASK@@VVector@@H_N@Z
 	?TASK_SetMoveTask@@YAXPAU_BOT_T@@PAU_BOT_TASK@@VVector@@_N@Z
+	?TASK_SetTouchTask@@YAXPAU_BOT_T@@PAU_BOT_TASK@@PAUedict_s@@_N@Z
 	?TASK_SetUseTask@@YAXPAU_BOT_T@@PAU_BOT_TASK@@PAUedict_s@@_N@Z
 	?TestAimThink@@YAXPAU_BOT_T@@@Z
 	?TestGuardThink@@YAXPAU_BOT_T@@@Z
@@ -1388,6 +1392,7 @@ EXPORTS
 	?UTIL_GetBotAlienPrimaryWeapon@@YA?AW4NSWeapon@@PBU_BOT_T@@@Z
 	?UTIL_GetBotCurrentPathArea@@YAEPAU_BOT_T@@@Z
 	?UTIL_GetBuildableStructureRefFromEdict@@YAPAU_BUILDABLE_STRUCTURE@@PBUedict_s@@@Z
+	?UTIL_GetButtonFloorLocation@@YA?AVVector@@PAUedict_s@@@Z
 	?UTIL_GetCentreOfEntity@@YA?AVVector@@PBUedict_s@@@Z
 	?UTIL_GetChamberTypeForHiveTech@@YA?AW4NSStructureType@@W4HiveTechStatus@@@Z
 	?UTIL_GetClosestMapLocationToPoint@@YAPADVVector@@@Z
