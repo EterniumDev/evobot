@@ -140,16 +140,25 @@ bool BotUseObject(bot_t* pBot, edict_t* Target, bool bContinuous)
 {
 	if (FNullEnt(Target)) { return false; }
 
-	Vector AimPoint = UTIL_GetCentreOfEntity(Target);
+	Vector ClosestPoint = UTIL_GetClosestPointOnEntityToLocation(pBot->pEdict->v.origin, Target);
+	Vector TargetCentre = UTIL_GetCentreOfEntity(Target);
+
+	Vector AimPoint = ClosestPoint;
+
+	if (IsEdictStructure(Target))
+	{
+		AimPoint = TargetCentre;
+		AimPoint.z = ClosestPoint.z;
+	}
 
 	BotLookAt(pBot, AimPoint);
 
 	if (!bContinuous && ((gpGlobals->time - pBot->LastUseTime) < min_player_use_interval)) { return false; }
 
-	Vector AimDir = UTIL_GetForwardVector(pBot->pEdict->v.v_angle);
-	Vector TargetAimDir = UTIL_GetVectorNormal(AimPoint - pBot->CurrentEyePosition);
+	Vector AimDir = UTIL_GetForwardVector2D(pBot->pEdict->v.v_angle);
+	Vector TargetAimDir = (IsEdictStructure(Target) ? UTIL_GetVectorNormal2D(TargetCentre - pBot->CurrentEyePosition) : UTIL_GetVectorNormal2D(ClosestPoint - pBot->CurrentEyePosition));
 
-	float AimDot = UTIL_GetDotProduct(AimDir, TargetAimDir);
+	float AimDot = UTIL_GetDotProduct2D(AimDir, TargetAimDir);
 
 	if (AimDot >= 0.95f)
 	{
@@ -983,6 +992,8 @@ void BotAttackTarget(bot_t* pBot, edict_t* Target)
 
 	float WeaponRange = GetMaxIdealWeaponRange(Weapon);
 
+	NSStructureType StructureType = GetStructureTypeFromEdict(Target);
+
 	if (AttackResult == ATTACK_OUTOFRANGE)
 	{
 		// Might need to duck if it's an infantry portal
@@ -1005,7 +1016,19 @@ void BotAttackTarget(bot_t* pBot, edict_t* Target)
 			return;
 		}
 
-		MoveTo(pBot, Target->v.origin, MOVESTYLE_NORMAL, WeaponRange);
+		Vector AttackPoint = Target->v.origin;
+
+		if (StructureType == STRUCTURE_ALIEN_HIVE)
+		{
+			const hive_definition* HiveDefinition = UTIL_GetHiveFromEdict(Target);
+
+			if (HiveDefinition)
+			{
+				AttackPoint = HiveDefinition->FloorLocation;
+			}
+		}
+
+		MoveTo(pBot, AttackPoint, MOVESTYLE_NORMAL, WeaponRange);
 
 		if (IsPlayerMarine(pBot->pEdict))
 		{
@@ -2700,7 +2723,12 @@ bool BotHasTaskOfType(bot_t* pBot, BotTaskType TaskType)
 	return (pBot->PrimaryBotTask.TaskType == TaskType || pBot->SecondaryBotTask.TaskType == TaskType || pBot->WantsAndNeedsTask.TaskType == TaskType || pBot->CommanderTask.TaskType == TaskType);
 }
 
-const char* BSP_GetEntityKeyValue(const edict_t* Entity, const char* Key)
+void BotStopCommanderMode(bot_t* pBot)
 {
-	return "";
+	// Thanks EterniumDev (Alien) for logic to allow commander AI to leave the chair and build structures when needed
+
+	if (IsPlayerCommander(pBot->pEdict))
+	{
+		FakeClientCommand(pBot->pEdict, "stopcommandermode", NULL, NULL);
+	}	
 }

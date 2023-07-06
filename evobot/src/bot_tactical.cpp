@@ -166,21 +166,17 @@ void SetHiveStatus(int HiveIndex, int NewStatus)
 	default: break;
 	}
 
-	if (Hives[HiveIndex].Status != HIVE_STATUS_UNBUILT && Hives[HiveIndex].ObstacleRef == 0)
+	if (Hives[HiveIndex].Status != HIVE_STATUS_UNBUILT && Hives[HiveIndex].ObstacleRefs[REGULAR_NAV_MESH] == 0)
 	{
-		Hives[HiveIndex].ObstacleRef = UTIL_AddTemporaryObstacle(UTIL_GetCentreOfEntity(Hives[HiveIndex].edict) - Vector(0.0f, 0.0f, 25.0f), 125.0f, 300.0f, DT_AREA_NULL);
-		UTIL_UpdateTileCache();
+		UTIL_AddTemporaryObstacles(UTIL_GetCentreOfEntity(Hives[HiveIndex].edict) - Vector(0.0f, 0.0f, 25.0f), 125.0f, 300.0f, DT_AREA_NULL, Hives[HiveIndex].ObstacleRefs);
 
-		Hives[HiveIndex].FloorLocation = FindClosestNavigablePointToDestination(MARINE_REGULAR_NAV_PROFILE, UTIL_GetCommChairLocation(), UTIL_GetFloorUnderEntity(Hives[HiveIndex].edict), UTIL_MetresToGoldSrcUnits(20.0f));
+		Hives[HiveIndex].FloorLocation = ZERO_VECTOR;
+		Hives[HiveIndex].NextFloorLocationCheck = gpGlobals->time + 1.0f;
 	}
 
 	if (Hives[HiveIndex].Status == HIVE_STATUS_UNBUILT)
 	{
-		if (Hives[HiveIndex].ObstacleRef > 0)
-		{
-			UTIL_RemoveTemporaryObstacle(Hives[HiveIndex].ObstacleRef);
-			Hives[HiveIndex].ObstacleRef = 0;
-		}
+		UTIL_RemoveTemporaryObstacles(Hives[HiveIndex].ObstacleRefs);
 		
 		Hives[HiveIndex].FloorLocation = UTIL_GetFloorUnderEntity(Hives[HiveIndex].edict);
 	}
@@ -660,7 +656,7 @@ void UTIL_RefreshBuildableStructures()
 			}
 
 			UTIL_OnStructureDestroyed(it->second.StructureType, it->second.Location);
-			UTIL_RemoveTemporaryObstacle(it->second.ObstacleRef);
+			UTIL_RemoveTemporaryObstacles(it->second.ObstacleRefs);
 			it = MarineBuildableStructureMap.erase(it);
 		}
 		else
@@ -687,7 +683,7 @@ void UTIL_RefreshBuildableStructures()
 			}
 
 			UTIL_OnStructureDestroyed(it->second.StructureType, it->second.Location);
-			UTIL_RemoveTemporaryObstacle(it->second.ObstacleRef);
+			UTIL_RemoveTemporaryObstacles(it->second.ObstacleRefs);
 			it = AlienBuildableStructureMap.erase(it);
 		}
 		else
@@ -697,6 +693,16 @@ void UTIL_RefreshBuildableStructures()
 	}
 
 	StructureRefreshFrame++;
+
+	for (int i = 0; i < NumTotalHives; i++)
+	{
+		if (Hives[i].NextFloorLocationCheck > 0.0f && gpGlobals->time >= Hives[i].NextFloorLocationCheck)
+		{
+			Hives[i].FloorLocation = FindClosestNavigablePointToDestination(MARINE_REGULAR_NAV_PROFILE, UTIL_GetCommChairLocation(), UTIL_GetFloorUnderEntity(Hives[i].edict), UTIL_MetresToGoldSrcUnits(20.0f));
+			Hives[i].NextFloorLocationCheck = 0.0f;
+		}
+	}
+
 }
 
 void UTIL_OnStructureCreated(buildable_structure* NewStructure)
@@ -1485,6 +1491,36 @@ int UTIL_GetNumBuiltStructuresOfType(const NSStructureType StructureType)
 	return result;
 }
 
+int UTIL_GetNumUnbuiltStructuresOfTeamInArea(const int Team, const Vector SearchLocation, const float SearchRadius)
+{
+	if (Team <= 0 || Team > ALIEN_TEAM_TWO) { return 0; }
+
+	bool bIsMarineStructure = (Team == MARINE_TEAM || Team == MARINE_TEAM_TWO);
+
+	int result = 0;
+
+	float DistSq = sqrf(SearchRadius);
+
+	if (bIsMarineStructure)
+	{
+		for (auto& it : MarineBuildableStructureMap)
+		{
+			if (!it.second.bOnNavmesh || it.second.bFullyConstructed || !it.second.bIsReachableMarine || it.second.edict->v.team != Team) { continue; }
+			if (vDist2DSq(it.second.Location, SearchLocation) <= DistSq) { result++; }
+		}
+	}
+	else
+	{
+		for (auto& it : AlienBuildableStructureMap)
+		{
+			if (!it.second.bOnNavmesh || it.second.bFullyConstructed || !it.second.bIsReachableAlien || it.second.edict->v.team != Team) { continue; }
+			if (vDist2DSq(it.second.Location, SearchLocation) <= DistSq) { result++; }
+		}
+	}
+
+	return result;
+}
+
 int UTIL_GetNearestAvailableResourcePointIndex(const Vector& SearchPoint)
 {
 	int result = -1;
@@ -1696,6 +1732,8 @@ const resource_node* UTIL_FindNearestResNodeToLocation(const Vector& Location)
 
 	return nullptr;
 }
+
+
 
 void UTIL_ClearMapLocations()
 {
@@ -2861,7 +2899,7 @@ edict_t* UTIL_FindClosestDamagedStructure(const Vector& SearchLocation, const in
 	{
 		for (auto& it : MarineBuildableStructureMap)
 		{
-			if (!it.second.bOnNavmesh || !it.second.bIsReachableAlien) { continue; }
+			if (!it.second.bOnNavmesh || !it.second.bIsReachableMarine) { continue; }
 
 			if (!it.second.bFullyConstructed) { continue; }
 
@@ -3213,11 +3251,11 @@ void UTIL_UpdateBuildableStructure(edict_t* Structure)
 			{
 				unsigned int area = UTIL_GetAreaForObstruction(StructureType);
 				float Radius = UTIL_GetStructureRadiusForObstruction(StructureType);
-				MarineBuildableStructureMap[EntIndex].ObstacleRef = UTIL_AddTemporaryObstacle(UTIL_GetCentreOfEntity(MarineBuildableStructureMap[EntIndex].edict), Radius, 100.0f, area);
+				UTIL_AddTemporaryObstacles(UTIL_GetCentreOfEntity(MarineBuildableStructureMap[EntIndex].edict), Radius, 100.0f, area, MarineBuildableStructureMap[EntIndex].ObstacleRefs);
 			}
 			else
 			{
-				MarineBuildableStructureMap[EntIndex].ObstacleRef = 0;
+				memset(MarineBuildableStructureMap[EntIndex].ObstacleRefs, 0, sizeof(unsigned int) * MAX_NAV_MESHES);
 			}
 
 			UTIL_OnStructureCreated(&MarineBuildableStructureMap[EntIndex]);
@@ -3283,11 +3321,11 @@ void UTIL_UpdateBuildableStructure(edict_t* Structure)
 			{
 				unsigned int area = UTIL_GetAreaForObstruction(StructureType);
 				float Radius = UTIL_GetStructureRadiusForObstruction(StructureType);
-				AlienBuildableStructureMap[EntIndex].ObstacleRef = UTIL_AddTemporaryObstacle(UTIL_GetCentreOfEntity(AlienBuildableStructureMap[EntIndex].edict), Radius, 100.0f, area);
+				UTIL_AddTemporaryObstacles(UTIL_GetCentreOfEntity(AlienBuildableStructureMap[EntIndex].edict), Radius, 100.0f, area, AlienBuildableStructureMap[EntIndex].ObstacleRefs);
 			}
 			else
 			{
-				AlienBuildableStructureMap[EntIndex].ObstacleRef = 0;
+				memset(AlienBuildableStructureMap[EntIndex].ObstacleRefs, 0, sizeof(unsigned int) * MAX_NAV_MESHES);
 			}
 
 			UTIL_OnStructureCreated(&AlienBuildableStructureMap[EntIndex]);
@@ -3350,6 +3388,16 @@ NSWeapon UTIL_GetWeaponTypeFromEdict(const edict_t* ItemEdict)
 	}
 
 	return WEAPON_NONE;
+}
+
+const hive_definition* UTIL_GetHiveFromEdict(edict_t* HiveEdict)
+{
+	for (int i = 0; i < NumTotalHives; i++)
+	{
+		if (Hives[i].edict == HiveEdict) { return &Hives[i]; }
+	}
+
+	return nullptr;
 }
 
 const hive_definition* UTIL_GetHiveAtIndex(int Index)
@@ -3739,29 +3787,27 @@ int UTIL_GetNumEquipmentInPlay()
 		}
 	}
 
-
 	return NumPlacedEquipment + NumUsedEquipment;
 }
 
 bool UTIL_BaseIsInDistress()
 {
-	int NumDefenders = UTIL_GetNumPlayersOfTeamInArea(UTIL_GetCommChairLocation(), UTIL_MetresToGoldSrcUnits(15.0f), MARINE_TEAM, nullptr, CLASS_NONE, true);
-	int NumMarines = GAME_GetNumPlayersOnTeam(MARINE_TEAM);
+	int NumAliens = UTIL_GetNumPlayersOfTeamInArea(UTIL_GetCommChairLocation(), UTIL_MetresToGoldSrcUnits(15.0f), ALIEN_TEAM, nullptr, CLASS_GORGE, false);
 
-	float MarineRatio = ((float)NumDefenders / (float)(NumMarines - 1));
+	if (NumAliens == 0) { return false; }
 
-	if (MarineRatio >= 0.3f) { return false; }
+	int NumDefenders = UTIL_GetNumPlayersOfTeamInArea(UTIL_GetCommChairLocation(), UTIL_MetresToGoldSrcUnits(15.0f), MARINE_TEAM, nullptr, CLASS_NONE, false);
 
-	int NumInfantryPortals = UTIL_GetNumBuiltStructuresOfType(STRUCTURE_MARINE_INFANTRYPORTAL);
+	if (NumDefenders > 0) { return false; }
+
+	if (!UTIL_StructureExistsOfType(STRUCTURE_MARINE_INFANTRYPORTAL)) { return true; }
 
 	int NumOnos = UTIL_GetNumPlayersOfTeamInArea(UTIL_GetCommChairLocation(), UTIL_MetresToGoldSrcUnits(10.0f), ALIEN_TEAM, nullptr, CLASS_ONOS, false);
 	int NumFades = UTIL_GetNumPlayersOfTeamInArea(UTIL_GetCommChairLocation(), UTIL_MetresToGoldSrcUnits(10.0f), ALIEN_TEAM, nullptr, CLASS_FADE, false);
-	int NumSkulks = UTIL_GetNumPlayersOfTeamInArea(UTIL_GetCommChairLocation(), UTIL_MetresToGoldSrcUnits(10.0f), ALIEN_TEAM, nullptr, CLASS_SKULK, false);
 
-	float MarineForce = (float)NumDefenders * 1.0f;
-	float AlienForce = ((float)NumSkulks * 1.0f) + ((NumFades + NumOnos) * 1.5f);
+	float ActiveMarineRatio = (float)GAME_GetNumActivePlayersOnTeam(MARINE_TEAM) / (float)GAME_GetNumDeadPlayersOnTeam(MARINE_TEAM);
 
-	return ((NumInfantryPortals == 0 || AlienForce > 2.0f) && AlienForce > (MarineForce * 2.0f));
+	return (ActiveMarineRatio < 1.0f || (NumOnos >= 1 || NumFades >= 2 || NumAliens >= 3));
 }
 
 bool UTIL_ResearchIsComplete(const NSResearch Research)

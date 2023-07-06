@@ -46,7 +46,8 @@
 #include "general_util.h"
 #include "player_util.h"
 #include "bot_task.h"
-#include "bot_commander.h"
+//#include "bot_commander.h"
+#include "bot_bsp.h"
 
 extern int m_spriteTexture;
 
@@ -318,14 +319,16 @@ void ClientCommand(edict_t* pEntity)
 		RETURN_META(MRES_SUPERCEDE);
 	}
 
-	if (FStrEq(pcmd, "getgamemode"))
-		//bots think MVM is "none"
-	{
-		const char* GameMode = UTIL_GameModeToChar(GAME_GetGameMode());
 
-		char buf[32];
-		sprintf(buf, "%s\n", GameMode);
-		UTIL_SayText(buf, pEntity);
+	if (FStrEq(pcmd, "testboxobstacle"))
+	{
+		Vector bMin = pEntity->v.absmin;
+		Vector bMax = pEntity->v.absmax;
+
+		bMin.z -= 5.0f;
+		bMax.z -= 5.0f;
+
+		UTIL_AddTemporaryBoxObstacle(bMin, bMax, DT_AREA_NULL);
 
 		RETURN_META(MRES_SUPERCEDE);
 	}
@@ -374,15 +377,15 @@ void ClientCommand(edict_t* pEntity)
 		RETURN_META(MRES_SUPERCEDE);
 	}
 
-	if (FStrEq(pcmd, "spherecheck"))
+	if (FStrEq(pcmd, "testweldables"))
 	{
-		edict_t* TriggerEdict = nullptr;
-
-		while ((TriggerEdict = UTIL_FindEntityInSphere(TriggerEdict, pEntity->v.origin, 5.0f)) != NULL)
+		edict_t* currWeldable = NULL;
+		while (((currWeldable = UTIL_FindEntityByClassname(currWeldable, "avhweldable")) != NULL) && (!FNullEnt(currWeldable)))
 		{
-			const char* EdictType = STRING(TriggerEdict->v.classname);
-
-
+			if (currWeldable->v.solid == SOLID_BSP && vDist2DSq(UTIL_GetCentreOfEntity(currWeldable), pEntity->v.origin) <= sqrf(100.0f))
+			{
+				UTIL_DrawBox(pEntity, currWeldable->v.absmin, currWeldable->v.absmax, 10.0f);
+			}
 		}
 
 		RETURN_META(MRES_SUPERCEDE);
@@ -425,15 +428,25 @@ void ClientCommand(edict_t* pEntity)
 		RETURN_META(MRES_SUPERCEDE);
 	}
 
-	if (FStrEq(pcmd, "maploc"))
+	if (FStrEq(pcmd, "testbuildloc"))
 	{
-		const char* LocName = UTIL_GetClosestMapLocationToPoint(pEntity->v.origin);
+		const hive_definition* Hive = UTIL_GetNearestBuiltHiveToLocation(pEntity->v.origin);
 
-		UTIL_SayText(LocName, pEntity);
+		if (Hive)
+		{
+			Vector BuildLocation = FindClosestNavigablePointToDestination(GORGE_BUILD_NAV_PROFILE, UTIL_GetCommChairLocation(), Hive->FloorLocation, UTIL_MetresToGoldSrcUnits(30.0f));
+
+			if (BuildLocation != ZERO_VECTOR)
+			{
+				BuildLocation = UTIL_GetRandomPointOnNavmeshInRadius(GORGE_BUILD_NAV_PROFILE, BuildLocation, UTIL_MetresToGoldSrcUnits(5.0f));
+
+				UTIL_DrawLine(pEntity, pEntity->v.origin, BuildLocation, 10.0f);
+			}
+
+		}
 
 		RETURN_META(MRES_SUPERCEDE);
 	}
-
 	
 
 	if (FStrEq(pcmd, "showconnections"))
@@ -441,6 +454,35 @@ void ClientCommand(edict_t* pEntity)
 		if (NavmeshLoaded())
 		{
 			DEBUG_DrawOffMeshConnections();
+		}
+
+		RETURN_META(MRES_SUPERCEDE);
+	}
+	
+	if (FStrEq(pcmd, "traceplat"))
+	{
+
+		Vector TraceStart = GetPlayerEyePosition(pEntity); // origin + pev->view_ofs
+		Vector LookDir = UTIL_GetForwardVector(pEntity->v.v_angle); // Converts view angles to normalized unit vector
+
+		Vector TraceEnd = TraceStart + (LookDir * 1000.0f);
+
+		TraceResult hit;
+		UTIL_TraceLine(TraceStart, TraceEnd, dont_ignore_monsters, dont_ignore_glass, pEntity, &hit);
+
+		edict_t* TracedEntity = hit.pHit;
+
+		if (!FNullEnt(TracedEntity))
+		{
+			if (FStrEq(STRING(TracedEntity->v.classname), "func_plat"))
+			{
+				UTIL_DrawLine(pEntity, pEntity->v.origin, UTIL_GetCentreOfEntity(TracedEntity), 10.0f);
+			}
+
+			if (FStrEq(STRING(TracedEntity->v.classname), "func_train"))
+			{
+				UTIL_DrawLine(pEntity, pEntity->v.origin, UTIL_GetCentreOfEntity(TracedEntity), 10.0f);
+			}
 		}
 
 		RETURN_META(MRES_SUPERCEDE);
@@ -468,6 +510,35 @@ void ClientCommand(edict_t* pEntity)
 				{
 					UTIL_DrawLine(pEntity, pEntity->v.origin, UTIL_GetCentreOfEntity(Trigger), 10.0f);
 				}
+
+				char ActType[64];
+
+				switch (Door->ActivationType)
+				{
+					case DOOR_BUTTON:
+						sprintf(ActType, "Button\n");
+						break;
+					case DOOR_SHOOT:
+						sprintf(ActType, "Shoot\n");
+						break;
+					case DOOR_TRIGGER:
+						sprintf(ActType, "Trigger\n");
+						break;
+					case DOOR_USE:
+						sprintf(ActType, "Use\n");
+						break;
+					case DOOR_WELD:
+						sprintf(ActType, "Weld\n");
+						break;
+					default:
+						sprintf(ActType, "None\n");
+						break;
+				}
+
+				UTIL_SayText(ActType, pEntity);
+
+				sprintf(ActType, "%4.2f, %4.2f, %4.2f\n", TracedEntity->v.absmin.x, TracedEntity->v.absmin.y, TracedEntity->v.absmin.z);
+				UTIL_SayText(ActType, pEntity);
 			}
 		}		
 
@@ -483,6 +554,8 @@ void ClientCommand(edict_t* pEntity)
 			Vector EntityCentre = UTIL_GetCentreOfEntity(currTrigger);
 
 			Vector ButtonFloor = UTIL_GetButtonFloorLocation(pEntity->v.origin, currTrigger);
+
+			ButtonFloor = FindClosestNavigablePointToDestination(GORGE_REGULAR_NAV_PROFILE, UTIL_GetEntityGroundLocation(pEntity), ButtonFloor, UTIL_MetresToGoldSrcUnits(10.0f));
 
 			UTIL_DrawLine(pEntity, EntityCentre, ButtonFloor, 5.0f);
 			
@@ -1155,6 +1228,9 @@ void StartFrame(void)
 
 			if (timeSinceLastThink >= BOT_MIN_FRAME_TIME)
 			{
+				UTIL_UpdateWeldableDoors();
+				UTIL_UpdateWeldableObstacles();
+
 				UTIL_UpdateTileCache();
 
 				for (bot_index = 0; bot_index < gpGlobals->maxClients; bot_index++)

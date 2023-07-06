@@ -160,7 +160,7 @@ bool CommanderProgressBuildAction(bot_t* CommanderBot, int ActionIndex, int Prio
 		bool bBuildingAtBase = (vDist2DSq(UTIL_GetCommChairLocation(), action->BuildLocation) < sqrf(UTIL_MetresToGoldSrcUnits(15.0f)));
 		float MaxDistFromBuildLocation = bBuildingAtBase ? UTIL_MetresToGoldSrcUnits(20.0f) : UTIL_MetresToGoldSrcUnits(10.0f);
 
-		bool IsMarineNearby = (bBuildingAtBase) ? UTIL_AnyMarinePlayerNearLocation(action->BuildLocation, MaxDistFromBuildLocation) : UTIL_AnyPlayerOnTeamWithLOS(action->BuildLocation, MARINE_TEAM, MaxDistFromBuildLocation);
+		bool IsMarineNearby = bBuildingAtBase || UTIL_AnyPlayerOnTeamWithLOS(action->BuildLocation, MARINE_TEAM, MaxDistFromBuildLocation);
 
 		bool IsAlienNearby = UTIL_AnyPlayerOnTeamWithLOS(action->BuildLocation, ALIEN_TEAM, UTIL_MetresToGoldSrcUnits(10.0f));
 
@@ -1185,11 +1185,37 @@ void CommanderQueueObservatoryResearch(bot_t* pBot, NSResearch Research, int Pri
 	}
 }
 
+bool ShouldCommanderLeaveChair(bot_t* pBot)
+{
+	int NumAliveMarinesInBase = UTIL_GetNumPlayersOfTeamInArea(UTIL_GetCommChairLocation(), UTIL_MetresToGoldSrcUnits(30.0f), pBot->pEdict->v.team, pBot->pEdict, CLASS_NONE, true);
+
+	if (NumAliveMarinesInBase > 0) { return false; }
+
+	int NumUnbuiltStructuresInBase = UTIL_GetNumUnbuiltStructuresOfTeamInArea(pBot->pEdict->v.team, UTIL_GetCommChairLocation(), UTIL_MetresToGoldSrcUnits(20.0f));
+
+	if (NumUnbuiltStructuresInBase == 0) { return false; }
+
+	int NumInfantryPortals = UTIL_GetNumBuiltStructuresOfTypeInRadius(STRUCTURE_MARINE_INFANTRYPORTAL, UTIL_GetCommChairLocation(), UTIL_MetresToGoldSrcUnits(10.0f));
+
+	if (NumInfantryPortals == 0) { return true; }
+
+	if (GAME_GetNumDeadPlayersOnTeam(pBot->pEdict->v.team) == 0) { return true; }
+
+	return false;
+}
+
 void CommanderThink(bot_t* pBot)
 {
 
 	if (!bGameIsActive)
 	{
+		return;
+	}
+
+	// Thanks to EterniumDev (Alien) for the suggestion to have the commander jump out and build if nobody is around to help
+	if (ShouldCommanderLeaveChair(pBot))
+	{
+		BotStopCommanderMode(pBot);
 		return;
 	}
 
@@ -2898,9 +2924,14 @@ void QueueSecureHiveAction(bot_t* CommanderBot, const Vector Area, int Priority)
 		{
 			if (UTIL_ResearchIsComplete(RESEARCH_OBSERVATORY_PHASETECH))
 			{
-				Vector BuildLocation = UTIL_GetRandomPointOnNavmeshInRadius(BUILDING_REGULAR_NAV_PROFILE, Area, UTIL_MetresToGoldSrcUnits(5.0f));
+				Vector BuildLocation = FindClosestNavigablePointToDestination(GORGE_BUILD_NAV_PROFILE, UTIL_GetCommChairLocation(), Area, UTIL_MetresToGoldSrcUnits(20.0f));
 
-				if (BuildLocation != ZERO_VECTOR && UTIL_PointIsReachable(MARINE_REGULAR_NAV_PROFILE, UTIL_GetCommChairLocation(), BuildLocation, max_player_use_reach))
+				if (BuildLocation != ZERO_VECTOR)
+				{
+					BuildLocation = UTIL_GetRandomPointOnNavmeshInRadius(GORGE_BUILD_NAV_PROFILE, BuildLocation, UTIL_MetresToGoldSrcUnits(5.0f));
+				}
+
+				if (BuildLocation != ZERO_VECTOR)
 				{
 					// If we already have secured this hive, then make adding a phase gate a top priority to fully secure it
 					int PhasePriority = FNullEnt(ExistingTurretFactory) ? Priority : 0;
@@ -2914,12 +2945,19 @@ void QueueSecureHiveAction(bot_t* CommanderBot, const Vector Area, int Priority)
 	{
 		if (UTIL_GetQueuedBuildRequestsOfTypeInArea(CommanderBot, STRUCTURE_MARINE_TURRETFACTORY, Area, UTIL_MetresToGoldSrcUnits(10.0f)) == 0)
 		{
-			Vector BuildLocation = UTIL_GetRandomPointOnNavmeshInRadius(BUILDING_REGULAR_NAV_PROFILE, Area, UTIL_MetresToGoldSrcUnits(5.0f));
+			Vector BuildLocation = FindClosestNavigablePointToDestination(GORGE_BUILD_NAV_PROFILE, UTIL_GetCommChairLocation(), Area, UTIL_MetresToGoldSrcUnits(20.0f));
 
-			if (BuildLocation != ZERO_VECTOR && UTIL_PointIsReachable(MARINE_REGULAR_NAV_PROFILE, UTIL_GetCommChairLocation(), BuildLocation, max_player_use_reach))
+			if (BuildLocation != ZERO_VECTOR)
 			{
-				UTIL_CommanderQueueStructureBuildAtLocation(CommanderBot, BuildLocation, STRUCTURE_MARINE_TURRETFACTORY, Priority);
+				BuildLocation = UTIL_GetRandomPointOnNavmeshInRadius(GORGE_BUILD_NAV_PROFILE, BuildLocation, UTIL_MetresToGoldSrcUnits(5.0f));
+
+				if (BuildLocation != ZERO_VECTOR)
+				{
+					UTIL_CommanderQueueStructureBuildAtLocation(CommanderBot, BuildLocation, STRUCTURE_MARINE_TURRETFACTORY, Priority);
+				}
 			}
+
+			
 		}
 	}
 	else

@@ -48,7 +48,7 @@ typedef struct _BUILDABLE_STRUCTURE
 	Vector Location = ZERO_VECTOR; // origin of the structure edict
 	NSStructureType StructureType = STRUCTURE_NONE; // Type of structure it is (e.g. hive, comm chair, infantry portal, defence chamber etc.)
 	int LastSeen = 0; // Which refresh cycle was this last seen on? Used to determine if the building has been removed from play
-	unsigned int ObstacleRef = 0; // If the building places an obstacle on the nav mesh, hold the reference so it can be removed if building is destroyed
+	unsigned int ObstacleRefs[8]; // References to this structure's obstacles across each nav mesh
 	bool bOnNavmesh = false; // Is the building on the nav mesh? Used to determine if the building ended up out of play or sinking into the floor somehow
 	bool bIsReachableMarine = false; // Is the building reachable by marines? Checks from the comm chair location
 	bool bIsReachableAlien = false; // Is the building reachable by aliens? Checks from the comm chair location
@@ -80,7 +80,8 @@ typedef struct _HIVE_DEFINITION_T
 	int HealthPercent = 0; // How much health it has
 	bool bIsUnderAttack = false; // Is the hive currently under attack? Becomes false if not taken damage for more than 10 seconds
 	int HiveResNodeIndex = -1; // Which resource node (indexes into ResourceNodes array) belongs to this hive?
-	unsigned int ObstacleRef = 0; // When in progress or built, will place an obstacle so bots don't try to walk through it
+	unsigned int ObstacleRefs[8]; // When in progress or built, will place an obstacle so bots don't try to walk through it
+	float NextFloorLocationCheck = 0.0f; // When should the closest navigable point to the hive be calculated? Used to delay the check after a hive is built
 
 } hive_definition;
 
@@ -210,6 +211,7 @@ int UTIL_GetNumPlacedStructuresOfType(const NSStructureType StructureType);
 int UTIL_GetNumPlacedStructuresOfTypeInRadius(const NSStructureType StructureType, const Vector Location, const float MaxRadius);
 int UTIL_GetNumBuiltStructuresOfTypeInRadius(const NSStructureType StructureType, const Vector Location, const float MaxRadius);
 int UTIL_GetNumBuiltStructuresOfType(const NSStructureType StructureType);
+int UTIL_GetNumUnbuiltStructuresOfTeamInArea(const int Team, const Vector SearchLocation, const float SearchRadius);
 
 int UTIL_GetNearestAvailableResourcePointIndex(const Vector& SearchPoint);
 int UTIL_GetNearestOccupiedResourcePointIndex(const Vector& SearchPoint);
@@ -277,6 +279,7 @@ HiveStatusType UTIL_GetHiveStatus(const edict_t* Hive);
 edict_t* UTIL_FindSafePlayerInArea(const int Team, const Vector SearchLocation, float MinRadius, float MaxRadius);
 
 const hive_definition* UTIL_GetHiveAtIndex(int Index);
+const hive_definition* UTIL_GetHiveFromEdict(edict_t* HiveEdict);
 int UTIL_GetNumTotalHives();
 int UTIL_GetNumActiveHives();
 int UTIL_GetNumUnbuiltHives();

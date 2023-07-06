@@ -201,6 +201,30 @@ void GAME_ClearClientList()
 	memset(&clients, 0, sizeof(clients));
 }
 
+int GAME_GetNumDeadPlayersOnTeam(const int Team)
+{
+	int Result = 0;
+
+	for (int i = 0; i < MAX_CLIENTS; i++)
+	{
+		if (!FNullEnt(clients[i]) && clients[i]->v.team == Team && IsPlayerDead(clients[i])) { Result++; }
+	}
+
+	return Result;
+}
+
+int GAME_GetNumActivePlayersOnTeam(const int Team)
+{
+	int Result = 0;
+
+	for (int i = 0; i < MAX_CLIENTS; i++)
+	{
+		if (!FNullEnt(clients[i]) && clients[i]->v.team == Team && IsPlayerActiveInGame(clients[i])) { Result++; }
+	}
+
+	return Result;
+}
+
 int GAME_GetNumPlayersOnTeam(const int Team)
 {
 	int Result = 0;
@@ -1259,21 +1283,17 @@ void EvoBot_ServerCommand(void)
 		return;
 	}
 
-	if (FStrEq(arg1, "debug"))
+	if (FStrEq(arg1, "reloadnav"))
 	{
-		const char* DebugCommand = CMD_ARGV(2);
-
-		if (FStrEq(DebugCommand, "stop"))
+		for (int i = 0; i < MAX_CLIENTS; i++)
 		{
-
-			return;
+			if (bots[i].is_used)
+			{
+				ClearBotMovement(&bots[i]);
+			}
 		}
 
-		if (FStrEq(DebugCommand, "navtest"))
-		{
-
-			return;
-		}
+		ReloadNavMeshes();
 
 		return;
 	}
