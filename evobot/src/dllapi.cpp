@@ -398,7 +398,7 @@ void ClientCommand(edict_t* pEntity)
 
 		TraceResult Hit;
 
-		UTIL_TraceLine(TraceStart, TraceEnd, dont_ignore_monsters, dont_ignore_glass, pEntity, &Hit);
+		UTIL_TraceLine(TraceStart, TraceEnd, ignore_monsters, dont_ignore_glass, pEntity, &Hit);
 
 		//UTIL_TraceLine(TraceStart, TraceEnd, dont_ignore_monsters, dont_ignore_glass, pEntity, &Hit);
 
@@ -476,31 +476,15 @@ void ClientCommand(edict_t* pEntity)
 
 	if (FStrEq(pcmd, "buttonfloor"))
 	{
+
 		edict_t* currTrigger = NULL;
 		while (((currTrigger = UTIL_FindEntityByClassname(currTrigger, "func_button")) != NULL) && (!FNullEnt(currTrigger)))
 		{
 			Vector EntityCentre = UTIL_GetCentreOfEntity(currTrigger);
 
-			Vector EndLoc = EntityCentre;
+			Vector ButtonFloor = UTIL_GetButtonFloorLocation(pEntity->v.origin, currTrigger);
 
-			TraceResult Hit;
-			UTIL_TraceLine(EntityCentre, EntityCentre - Vector(0.0f, 0.0f, 1000.0f), ignore_monsters, ignore_glass, currTrigger, &Hit);
-
-			if (Hit.flFraction < 1.0f)
-			{
-				EndLoc = Hit.vecEndPos;
-
-				EndLoc.z = fmaxf(EndLoc.z, EntityCentre.z - 100.0f);
-			}
-
-			UTIL_DrawLine(pEntity, UTIL_GetCentreOfEntity(currTrigger), EndLoc, 5.0f, 255, 0, 0);
-
-			Vector ValidNavmeshPoint = UTIL_ProjectPointToNavmesh(EndLoc, MARINE_REGULAR_NAV_PROFILE);
-
-			if (ValidNavmeshPoint != ZERO_VECTOR)
-			{
-				UTIL_DrawLine(pEntity, UTIL_GetCentreOfEntity(currTrigger), ValidNavmeshPoint, 5.0f);
-			}
+			UTIL_DrawLine(pEntity, EntityCentre, ButtonFloor, 5.0f);
 			
 		}
 		
