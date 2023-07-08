@@ -4,6 +4,9 @@
     <ClCompile Include="Y:\EvobotNSGithub\evobot\src\bot_alien.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Y:\EvobotNSGithub\evobot\src\bot_bsp.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="Y:\EvobotNSGithub\evobot\src\bot_client.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -64,6 +67,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Y:\EvobotNSGithub\evobot\src\bot_alien.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Y:\EvobotNSGithub\evobot\src\bot_bsp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Y:\EvobotNSGithub\evobot\src\bot_client.h">

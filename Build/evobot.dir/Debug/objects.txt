@@ -1,4 +1,5 @@
 Y:/EvobotNSGithub/Build/evobot.dir/Debug/bot_alien.obj
+Y:/EvobotNSGithub/Build/evobot.dir/Debug/bot_bsp.obj
 Y:/EvobotNSGithub/Build/evobot.dir/Debug/bot_client.obj
 Y:/EvobotNSGithub/Build/evobot.dir/Debug/bot_commander.obj
 Y:/EvobotNSGithub/Build/evobot.dir/Debug/bot_config.obj

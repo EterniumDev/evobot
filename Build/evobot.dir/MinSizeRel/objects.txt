@@ -1,4 +1,5 @@
 Y:/EvobotNSGithub/Build/evobot.dir/MinSizeRel/bot_alien.obj
+Y:/EvobotNSGithub/Build/evobot.dir/MinSizeRel/bot_bsp.obj
 Y:/EvobotNSGithub/Build/evobot.dir/MinSizeRel/bot_client.obj
 Y:/EvobotNSGithub/Build/evobot.dir/MinSizeRel/bot_commander.obj
 Y:/EvobotNSGithub/Build/evobot.dir/MinSizeRel/bot_config.obj

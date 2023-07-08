@@ -370,6 +370,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Y:\EvobotNSGithub\evobot\src\bot_alien.cpp" />
+    <ClCompile Include="Y:\EvobotNSGithub\evobot\src\bot_bsp.cpp" />
     <ClCompile Include="Y:\EvobotNSGithub\evobot\src\bot_client.cpp" />
     <ClCompile Include="Y:\EvobotNSGithub\evobot\src\bot_commander.cpp" />
     <ClCompile Include="Y:\EvobotNSGithub\evobot\src\bot_config.cpp" />
@@ -390,6 +391,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClCompile Include="Y:\EvobotNSGithub\evobot\src\sdk_util.cpp" />
     <ClInclude Include="Y:\EvobotNSGithub\evobot\src\NS_Constants.h" />
     <ClInclude Include="Y:\EvobotNSGithub\evobot\src\bot_alien.h" />
+    <ClInclude Include="Y:\EvobotNSGithub\evobot\src\bot_bsp.h" />
     <ClInclude Include="Y:\EvobotNSGithub\evobot\src\bot_client.h" />
     <ClInclude Include="Y:\EvobotNSGithub\evobot\src\bot_commander.h" />
     <ClInclude Include="Y:\EvobotNSGithub\evobot\src\bot_config.h" />

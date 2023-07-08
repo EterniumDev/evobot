@@ -46,7 +46,7 @@
 #include "general_util.h"
 #include "player_util.h"
 #include "bot_task.h"
-//#include "bot_commander.h"
+#include "bot_commander.h"
 #include "bot_bsp.h"
 
 extern int m_spriteTexture;

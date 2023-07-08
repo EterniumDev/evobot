@@ -57,8 +57,6 @@ typedef struct _BUTTONDEF
 
 } BUTTONDEF;
 
-
-
 void BSP_RegisterWeldables();
 char* GetEntityDefClassname(BSPENTITYDEF* entity);
 
