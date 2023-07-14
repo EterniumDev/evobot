@@ -1,4 +1,22 @@
-﻿  bot_bsp.cpp
+﻿  bot_alien.cpp
+  bot_bsp.cpp
+  bot_client.cpp
+  bot_commander.cpp
+  bot_config.cpp
+  bot_marine.cpp
+  bot_math.cpp
+  bot_navigation.cpp
+  bot_tactical.cpp
+  bot_task.cpp
+  bot_util.cpp
+  bot_weapons.cpp
+  dllapi.cpp
+  engine_api.cpp
+  game_state.cpp
+  general_util.cpp
+  meta_api.cpp
+  player_util.cpp
+  Generating Code...
   Auto build dll exports
      Creating library Y:/EvobotNSGithub/Build/Debug/evobot_mm.lib and object Y:/EvobotNSGithub/Build/Debug/evobot_mm.exp
   evobot.vcxproj -> Y:\EvobotNSGithub\Build\Debug\evobot_mm.dll

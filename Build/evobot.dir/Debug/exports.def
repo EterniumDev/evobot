@@ -17,6 +17,7 @@ EXPORTS
 	??_R0?AVexception@std@@@8 	 DATA
 	??_R0?AVios_base@std@@@8 	 DATA
 	?AlienBuildableStructureMap@@3V?$unordered_map@HU_BUILDABLE_STRUCTURE@@U?$hash@H@std@@U?$equal_to@H@3@V?$allocator@U?$pair@$$CBHU_BUILDABLE_STRUCTURE@@@std@@@3@@std@@A 	 DATA
+	?BotDeltaTime@@3MA 	 DATA
 	?BotPrefix@@3PADA 	 DATA
 	?BotSkillLevelsMap@@3V?$unordered_map@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@U_BOT_SKILL@@U?$hash@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@2@U?$equal_to@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@2@V?$allocator@U?$pair@$$CBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@U_BOT_SKILL@@@std@@@2@@std@@A 	 DATA
 	?ChamberSequence@@3PAW4HiveTechStatus@@A 	 DATA
@@ -36,6 +37,7 @@ EXPORTS
 	?MapLocations@@3PAU_MAP_LOCATION@@A 	 DATA
 	?MarineBuildableStructureMap@@3V?$unordered_map@HU_BUILDABLE_STRUCTURE@@U?$hash@H@std@@U?$equal_to@H@3@V?$allocator@U?$pair@$$CBHU_BUILDABLE_STRUCTURE@@@std@@@3@@std@@A 	 DATA
 	?MarineDroppedItemMap@@3V?$unordered_map@HU_DROPPED_MARINE_ITEM@@U?$hash@H@std@@U?$equal_to@H@3@V?$allocator@U?$pair@$$CBHU_DROPPED_MARINE_ITEM@@@std@@@3@@std@@A 	 DATA
+	?MaxStuckTime@@3MA 	 DATA
 	?NSVersion@@3HA 	 DATA
 	?NavDoors@@3PAU_NAV_DOOR@@A 	 DATA
 	?NavWeldableObstacles@@3PAU_NAV_WELDABLE@@A 	 DATA
@@ -970,6 +972,7 @@ EXPORTS
 	?BotProgressGuardTask@@YAXPAU_BOT_T@@PAU_BOT_TASK@@@Z
 	?BotProgressMoveTask@@YAXPAU_BOT_T@@PAU_BOT_TASK@@@Z
 	?BotProgressPickupTask@@YAXPAU_BOT_T@@PAU_BOT_TASK@@@Z
+	?BotProgressReinforceStructureTask@@YAXPAU_BOT_T@@PAU_BOT_TASK@@@Z
 	?BotProgressResupplyTask@@YAXPAU_BOT_T@@PAU_BOT_TASK@@@Z
 	?BotProgressTakeCommandTask@@YAXPAU_BOT_T@@@Z
 	?BotProgressTask@@YAXPAU_BOT_T@@PAU_BOT_TASK@@@Z
@@ -1016,6 +1019,7 @@ EXPORTS
 	?CONFIG_GetManualAlienTeamSize@@YAHXZ
 	?CONFIG_GetManualMarineTeamSize@@YAHXZ
 	?CONFIG_GetMarineTeamSizeForMap@@YAHPBD@Z
+	?CONFIG_GetMaxStuckTime@@YAMXZ
 	?CONFIG_GetNSVersion@@YAHXZ
 	?CONFIG_PopulateBotNames@@YAXXZ
 	?CONFIG_PrintHelpFile@@YAXXZ
@@ -1109,6 +1113,7 @@ EXPORTS
 	?GAME_BotCreate@@YAXPAUedict_s@@H@Z
 	?GAME_BotSpawnInit@@YAXPAU_BOT_T@@@Z
 	?GAME_ClearClientList@@YAXXZ
+	?GAME_GetBotDeltaTime@@YAMXZ
 	?GAME_GetBotsWithRoleType@@YAHW4BotRole@@HPBUedict_s@@@Z
 	?GAME_GetDebugMode@@YA?AW4_EVODEBUGMODE@@XZ
 	?GAME_GetGameMode@@YA?AW4NSGameMode@@XZ
@@ -1132,6 +1137,7 @@ EXPORTS
 	?GAME_RemoveBotFromTeam@@YAXH@Z
 	?GAME_RemoveClient@@YAXPAUedict_s@@@Z
 	?GAME_Reset@@YAXXZ
+	?GAME_SetBotDeltaTime@@YAXM@Z
 	?GAME_SetListenServerEdict@@YAXPAUedict_s@@@Z
 	?GAME_UpdateBotCounts@@YAXXZ
 	?GAME_UpdateServerMSecVal@@YAXN@Z
@@ -1151,7 +1157,8 @@ EXPORTS
 	?GetDesiredAlienUpgrade@@YAHPBU_BOT_T@@W4HiveTechStatus@@@Z
 	?GetEnergyCostForWeapon@@YAMW4NSWeapon@@@Z
 	?GetEntityDefClassname@@YAPADPAU_BSPENTITYDEF@@@Z
-	?GetFirstBotWithBuildTask@@YAPAUedict_s@@W4NSStructureType@@PAU1@@Z
+	?GetFirstBotWithBuildTask@@YAPAU_BOT_T@@W4NSStructureType@@PAUedict_s@@@Z
+	?GetFirstBotWithReinforceTask@@YAPAU_BOT_T@@PAUedict_s@@0@Z
 	?GetFullFilePath@@YAXPADPBD@Z
 	?GetGameDir@@YAXPAD@Z
 	?GetImpulseForAlienCombatUpgrade@@YAHW4CombatModeAlienUpgrade@@@Z
@@ -1194,6 +1201,7 @@ EXPORTS
 	?IsAlienCapperTaskNeeded@@YA_NXZ
 	?IsAlienTraitCategoryAvailable@@YA_NW4HiveTechStatus@@@Z
 	?IsBotOffPath@@YA_NPBU_BOT_T@@@Z
+	?IsBotPermaStuck@@YA_NPAU_BOT_T@@@Z
 	?IsBotReloading@@YA_NPAU_BOT_T@@@Z
 	?IsBotStuck@@YA_NPAU_BOT_T@@VVector@@@Z
 	?IsEdictPlayer@@YA_NPBUedict_s@@@Z
@@ -1313,6 +1321,8 @@ EXPORTS
 	?TASK_SetDefendTask@@YAXPAU_BOT_T@@PAU_BOT_TASK@@PAUedict_s@@_N@Z
 	?TASK_SetEvolveTask@@YAXPAU_BOT_T@@PAU_BOT_TASK@@VVector@@H_N@Z
 	?TASK_SetMoveTask@@YAXPAU_BOT_T@@PAU_BOT_TASK@@VVector@@_N@Z
+	?TASK_SetReinforceStructureTask@@YAXPAU_BOT_T@@PAU_BOT_TASK@@PAUedict_s@@W4NSStructureType@@_N@Z
+	?TASK_SetReinforceStructureTask@@YAXPAU_BOT_T@@PAU_BOT_TASK@@PAUedict_s@@_N@Z
 	?TASK_SetTouchTask@@YAXPAU_BOT_T@@PAU_BOT_TASK@@PAUedict_s@@_N@Z
 	?TASK_SetUseTask@@YAXPAU_BOT_T@@PAU_BOT_TASK@@PAUedict_s@@VVector@@_N@Z
 	?TASK_SetUseTask@@YAXPAU_BOT_T@@PAU_BOT_TASK@@PAUedict_s@@_N@Z
@@ -1322,12 +1332,14 @@ EXPORTS
 	?UTIL_ActionExistsInLocation@@YA_NPBU_BOT_T@@VVector@@@Z
 	?UTIL_ActionHasValidPlayerAssigned@@YA_NPAU_BOT_T@@HH@Z
 	?UTIL_ActiveHiveWithTechExists@@YA_NW4HiveTechStatus@@@Z
+	?UTIL_ActiveHiveWithoutTechExists@@YA_NXZ
 	?UTIL_AddTemporaryBoxObstacle@@YAIVVector@@0H@Z
 	?UTIL_AddTemporaryObstacle@@YAIVVector@@MMH@Z
 	?UTIL_AddTemporaryObstacles@@YAXVVector@@MMHPAI@Z
 	?UTIL_AdjustPointAwayFromNavWall@@YA?AVVector@@V1@M@Z
 	?UTIL_AlienFindNearestHealingSpot@@YAPAUedict_s@@PAU_BOT_T@@VVector@@@Z
 	?UTIL_AlienFindUnclaimedResNodeFurthestFromLocation@@YAPBU_RESOURCE_NODE@@PBU_BOT_T@@ABVVector@@_N@Z
+	?UTIL_AlienHiveNeedsReinforcing@@YA_NH@Z
 	?UTIL_AlienResNodeNeedsReinforcing@@YA_NH@Z
 	?UTIL_AnglesToVector@@YAXVVector@@PAV1@11@Z
 	?UTIL_AnyMarinePlayerNearLocation@@YA_NABVVector@@M@Z
@@ -1488,10 +1500,12 @@ EXPORTS
 	?UTIL_GetNearestPolyRefForEntity@@YAIPBUedict_s@@@Z
 	?UTIL_GetNearestPolyRefForLocation@@YAIHVVector@@@Z
 	?UTIL_GetNearestPolyRefForLocation@@YAIVVector@@@Z
+	?UTIL_GetNearestResNodeNeedsReinforcing@@YAPBU_RESOURCE_NODE@@PAU_BOT_T@@VVector@@@Z
 	?UTIL_GetNearestSpecialPrimaryWeapon@@YAPAUedict_s@@VVector@@W4NSDeployableItem@@M_N@Z
 	?UTIL_GetNearestStructureIndexOfType@@YAPAUedict_s@@ABVVector@@W4NSStructureType@@M_N2@Z
 	?UTIL_GetNearestStructureOfTypeInLocation@@YAPAUedict_s@@W4NSStructureType@@ABVVector@@M_N2@Z
 	?UTIL_GetNearestUnattackedStructureOfTeamInLocation@@YAPAUedict_s@@VVector@@PAU1@HM@Z
+	?UTIL_GetNearestUnbuiltHiveNeedsReinforcing@@YAPBU_HIVE_DEFINITION_T@@PAU_BOT_T@@@Z
 	?UTIL_GetNearestUnbuiltStructureOfTypeInLocation@@YAPAUedict_s@@W4NSStructureType@@ABVVector@@M@Z
 	?UTIL_GetNearestUnbuiltStructureWithLOS@@YAPAUedict_s@@PAU_BOT_T@@VVector@@MH@Z
 	?UTIL_GetNearestUndefendedStructureOfTypeUnderAttack@@YAPAUedict_s@@PAU_BOT_T@@W4NSStructureType@@@Z
@@ -1531,6 +1545,7 @@ EXPORTS
 	?UTIL_GetRandomStructureOfType@@YAPAUedict_s@@W4NSStructureType@@PBU1@_N@Z
 	?UTIL_GetRandomUnitVectorInCone@@YA?AVVector@@V1@M@Z
 	?UTIL_GetResearchMask@@YA?AW4AvHUpgradeMask@@W4NSResearch@@@Z
+	?UTIL_GetResourceNodeAtIndex@@YAPBU_RESOURCE_NODE@@H@Z
 	?UTIL_GetSpectatedBot@@YAPAU_BOT_T@@PBUedict_s@@@Z
 	?UTIL_GetStructureCountOfType@@YAHW4NSStructureType@@@Z
 	?UTIL_GetStructureRadiusForObstruction@@YAMW4NSStructureType@@@Z
@@ -1588,6 +1603,8 @@ EXPORTS
 	?UTIL_IsNearActiveHive@@YA_NVVector@@M@Z
 	?UTIL_IsPathBlockedByDoor@@YA_NVVector@@0PAUedict_s@@@Z
 	?UTIL_IsPlayerOfTeamInArea@@YA_NVVector@@MHPAUedict_s@@W4NSPlayerClass@@@Z
+	?UTIL_IsReinforceHiveTaskStillValid@@YA_NPAU_BOT_T@@PAU_BOT_TASK@@@Z
+	?UTIL_IsReinforceStructureTaskStillValid@@YA_NPAU_BOT_T@@PAU_BOT_TASK@@@Z
 	?UTIL_IsResupplyTaskStillValid@@YA_NPAU_BOT_T@@PAU_BOT_TASK@@@Z
 	?UTIL_IsStructureElectrified@@YA_NPBUedict_s@@@Z
 	?UTIL_IsTaskCompleted@@YA_NPAU_BOT_T@@PAU_BOT_TASK@@@Z
@@ -2157,6 +2174,7 @@ EXPORTS
 	?capacity@?$vector@W4HiveTechStatus@@V?$allocator@W4HiveTechStatus@@@std@@@std@@QBEIXZ
 	?ceil@@YAMM@Z
 	?clampf@@YAMMMM@Z
+	?clampi@@YAMHHH@Z
 	?clear@?$_Hash@V?$_Umap_traits@HU_BUILDABLE_STRUCTURE@@V?$_Uhash_compare@HU?$hash@H@std@@U?$equal_to@H@2@@std@@V?$allocator@U?$pair@$$CBHU_BUILDABLE_STRUCTURE@@@std@@@3@$0A@@std@@@std@@QAEXXZ
 	?clear@?$_Hash@V?$_Umap_traits@HU_DROPPED_MARINE_ITEM@@V?$_Uhash_compare@HU?$hash@H@std@@U?$equal_to@H@2@@std@@V?$allocator@U?$pair@$$CBHU_DROPPED_MARINE_ITEM@@@std@@@3@$0A@@std@@@std@@QAEXXZ
 	?clear@?$_Hash@V?$_Umap_traits@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@U_BOT_SKILL@@V?$_Uhash_compare@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@U?$hash@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@2@U?$equal_to@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@2@@2@V?$allocator@U?$pair@$$CBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@U_BOT_SKILL@@@std@@@2@$0A@@std@@@std@@QAEXXZ
