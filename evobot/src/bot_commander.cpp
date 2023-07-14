@@ -673,7 +673,7 @@ void CommanderReceiveAmmoRequest(bot_t* pBot, edict_t* Requestor)
 
 	if (UTIL_StructureOfTypeExistsInLocation(STRUCTURE_MARINE_ANYARMOURY, Requestor->v.origin, UTIL_MetresToGoldSrcUnits(15.0f)))
 	{
-		char bufe[64];
+		char bufe[512];
 		sprintf(bufe, "Can you use the armoury please, %s?", STRING(Requestor->v.netname));
 		BotTeamSay(pBot, 2.0f, bufe);
 		return;
@@ -681,7 +681,7 @@ void CommanderReceiveAmmoRequest(bot_t* pBot, edict_t* Requestor)
 
 	if (UTIL_GetItemCountOfTypeInArea(ITEM_MARINE_AMMO, Requestor->v.origin, UTIL_MetresToGoldSrcUnits(10.0f)) > 0)
 	{
-		char buff[64];
+		char buff[512];
 		sprintf(buff, "I've already dropped ammo there, %s", STRING(Requestor->v.netname));
 		BotTeamSay(pBot, 2.0f, buff);
 		return;
