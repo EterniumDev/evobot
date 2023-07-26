@@ -91,7 +91,7 @@ bool IsPlayerBot(const edict_t* Player)
 bool IsPlayerDead(const edict_t* Player)
 {
 	if (FNullEnt(Player)) { return true; }
-	return (Player->v.deadflag != DEAD_NO || Player->v.health <= 0.0f);
+	return (Player->v.deadflag != DEAD_NO);
 }
 
 bool IsPlayerStunned(const edict_t* Player)

@@ -42,8 +42,6 @@ extern float last_item_refresh_time;
 extern int StructureRefreshFrame;
 extern int ItemRefreshFrame;
 
-float BotDeltaTime = 0.016f;
-
 EvobotDebugMode CurrentDebugMode = EVO_DEBUG_NONE;
 
 NSGameMode CurrentGameMode = GAME_MODE_NONE;
@@ -51,16 +49,6 @@ NSGameMode CurrentGameMode = GAME_MODE_NONE;
 EvobotDebugMode GAME_GetDebugMode()
 {
 	return CurrentDebugMode;
-}
-
-float GAME_GetBotDeltaTime()
-{
-	return BotDeltaTime;
-}
-
-void GAME_SetBotDeltaTime(float NewDelta)
-{
-	BotDeltaTime = NewDelta;
 }
 
 NSGameMode GAME_GetGameMode()
@@ -1010,11 +998,6 @@ void EvoBot_ServerCommand(void)
 		CONFIG_SetManualAlienTeamSize(0);
 
 		GAME_RemoveAllBots();
-
-		UTIL_ClearMapAIData();
-		UTIL_ClearMapLocations();
-
-		UnloadNavigationData();
 
 		return;
 	}

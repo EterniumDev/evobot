@@ -1793,7 +1793,6 @@ void BotThink(bot_t* pBot)
 	if (IsPlayerInReadyRoom(pBot->pEdict))
 	{
 		ReadyRoomThink(pBot);
-		
 		return;
 	}
 
@@ -2074,46 +2073,29 @@ void CustomThink(bot_t* pBot)
 {
 	if (!IsPlayerAlien(pBot->pEdict)) { return; }
 
-	pBot->CurrentRole = BOT_ROLE_BUILDER;
+	pBot->CurrentEnemy = BotGetNextEnemyTarget(pBot);
 
-	if (!pBot->CurrentTask) { pBot->CurrentTask = &pBot->PrimaryBotTask; }
-
-	BotUpdateAndClearTasks(pBot);
-
-	if (pBot->PrimaryBotTask.TaskType == TASK_NONE || !pBot->PrimaryBotTask.bTaskIsUrgent)
+	if (pBot->CurrentEnemy > -1)
 	{
-		BotAlienSetPrimaryTask(pBot, &pBot->PrimaryBotTask);
+		AlienCombatThink(pBot);
 	}
-
-	if (pBot->SecondaryBotTask.TaskType == TASK_NONE || !pBot->SecondaryBotTask.bTaskIsUrgent)
+	else
 	{
-		BotAlienSetSecondaryTask(pBot, &pBot->SecondaryBotTask);
-	}
+		edict_t* Enemy = UTIL_GetNearestPlayerOfTeamInArea(pBot->pEdict->v.origin, UTIL_MetresToGoldSrcUnits(500.0f), MARINE_TEAM, nullptr, CLASS_NONE);
 
-	AlienCheckWantsAndNeeds(pBot);
-
-	pBot->CurrentTask = BotGetNextTask(pBot);
-
-	if (!IsPlayerGorge(pBot->pEdict) || PlayerHasWeapon(pBot->pEdict, WEAPON_GORGE_BILEBOMB))
-	{
-		edict_t* DangerTurret = BotGetNearestDangerTurret(pBot, UTIL_MetresToGoldSrcUnits(10.0f));
-
-		if (!FNullEnt(DangerTurret))
+		if (!FNullEnt(Enemy))
 		{
-			Vector TaskLocation = (!FNullEnt(pBot->CurrentTask->TaskTarget)) ? pBot->CurrentTask->TaskTarget->v.origin : pBot->CurrentTask->TaskLocation;
-			float DistToTurret = vDist2DSq(TaskLocation, DangerTurret->v.origin);
-
-			if (pBot->CurrentTask->TaskType != TASK_ATTACK && DistToTurret < sqrf(UTIL_MetresToGoldSrcUnits(10.0f)))
+			if (UTIL_ShouldBotBeCautious(pBot))
 			{
-				BotAttackTarget(pBot, DangerTurret);
-				return;
+				MoveTo(pBot, Enemy->v.origin, MOVESTYLE_HIDE, 100.0f);
 			}
-		}
-	}
+			else
+			{
+				MoveTo(pBot, Enemy->v.origin, MOVESTYLE_NORMAL, 100.0f);
+			}
 
-	if (pBot->CurrentTask && pBot->CurrentTask->TaskType != TASK_NONE)
-	{
-		BotProgressTask(pBot, pBot->CurrentTask);
+			
+		}
 	}
 
 }
@@ -2183,6 +2165,7 @@ void TestNavThink(bot_t* pBot)
 	}
 	else
 	{
+
 		int MoveProfile = UTIL_GetMoveProfileForBot(pBot, MOVESTYLE_NORMAL);
 
 		Vector RandomPoint = UTIL_GetRandomPointOfInterest();
