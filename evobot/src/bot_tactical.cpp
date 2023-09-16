@@ -22,6 +22,8 @@
 #include "bot_task.h"
 #include "bot_commander.h"
 
+#include <meta_api.h>
+
 #include "DetourTileCacheBuilder.h"
 
 #include <unordered_map>
@@ -29,6 +31,8 @@
 
 resource_node ResourceNodes[64];
 int NumTotalResNodes;
+
+Vector DefaultCommChairPos = ZERO_VECTOR;
 
 hive_definition Hives[10];
 int NumTotalHives;
@@ -1969,6 +1973,18 @@ void UTIL_ClearMapAIData()
 
 	last_structure_refresh_time = 0.0f;
 	last_item_refresh_time = 0.0f;
+
+	//zero the location beforehand so the get comm chair location will look the command chair
+	DefaultCommChairPos = ZERO_VECTOR;
+	DefaultCommChairPos = UTIL_GetCommChairLocation();
+	//console
+
+	
+}
+
+void UTIL_PRINTCOMMCHAIRLOC()
+{
+	LOG_CONSOLE(PLID, "COMM CHAIR LOCATION SET %f, %f, %f", DefaultCommChairPos.x, DefaultCommChairPos.y, DefaultCommChairPos.z);
 }
 
 const resource_node* UTIL_FindEmptyResNodeClosestToLocation(const Vector& Location)
@@ -2799,6 +2815,12 @@ bool UTIL_CommChairExists()
 
 Vector UTIL_GetCommChairLocation()
 {
+	//IF we've already initialized the comm chair's position then 
+	if (DefaultCommChairPos != ZERO_VECTOR)
+	{
+		return DefaultCommChairPos;
+	}
+
 	if (MarineBuildableStructureMap.size() > 0)
 	{
 		edict_t* ChairEdict = nullptr;

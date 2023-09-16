@@ -1063,6 +1063,15 @@ void EvoBot_ServerCommand(void)
 		return;
 	}
 
+	if (FStrEq(arg1, "printcc"))
+	{
+
+		UTIL_PRINTCOMMCHAIRLOC();
+
+		return;
+	}
+	
+
 	if (FStrEq(arg1, "loadconfig"))
 	{
 		LOG_CONSOLE(PLID, "Restoring default bot behaviour from evobot.cfg...\n");

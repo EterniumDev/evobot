@@ -74,6 +74,8 @@ static const float item_inventory_refresh_rate = 0.1f;
 
 // Clears out the marine and alien buildable structure maps, resource node and hive lists, and the marine item list
 void UTIL_ClearMapAIData();
+void UTIL_PRINTCOMMCHAIRLOC();
+
 // Clears out the MapLocations array
 void UTIL_ClearMapLocations();
 // Clear out all the hive information
