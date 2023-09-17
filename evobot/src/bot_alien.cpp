@@ -432,6 +432,7 @@ void AlienHarasserSetPrimaryTask(bot_t* pBot, bot_task* Task)
 		}
 	}
 
+	/*
 	edict_t* CommChair = UTIL_GetCommChair();
 
 	if (CommChair)
@@ -447,7 +448,7 @@ void AlienHarasserSetPrimaryTask(bot_t* pBot, bot_task* Task)
 		TASK_SetAttackTask(pBot, Task, EnemyPlayer, true);
 		return;
 	}
-
+	*/
 }
 
 void AlienHarasserSetCombatModePrimaryTask(bot_t* pBot, bot_task* Task)
