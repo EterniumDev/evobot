@@ -903,7 +903,7 @@ void AlienDestroyerSetPrimaryTask(bot_t* pBot, bot_task* Task)
 		}
 	}
 
-
+	
 	// Take out the observatory first to prevent beacon and phase gates
 	edict_t* Obs = UTIL_GetFirstCompletedStructureOfType(STRUCTURE_MARINE_OBSERVATORY);
 
@@ -931,6 +931,7 @@ void AlienDestroyerSetPrimaryTask(bot_t* pBot, bot_task* Task)
 		return;
 	}
 
+	/*
 	// And finally, the comm chair
 	edict_t* CommChair = UTIL_GetCommChair();
 
@@ -948,6 +949,7 @@ void AlienDestroyerSetPrimaryTask(bot_t* pBot, bot_task* Task)
 		TASK_SetAttackTask(pBot, Task, EnemyPlayer, false);
 		return;
 	}
+	*/
 }
 
 void AlienDestroyerSetCombatModePrimaryTask(bot_t* pBot, bot_task* Task)
