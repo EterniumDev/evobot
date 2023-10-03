@@ -2110,7 +2110,7 @@ void BotThink(bot_t* pBot)
 		{
 			NSGameMode CurrentGameMode = GAME_GetGameMode();
 
-			if (CurrentGameMode == GAME_MODE_REGULAR)
+			if (CurrentGameMode == GAME_MODE_REGULAR || CurrentGameMode == GAME_MODE_MVM)
 			{
 				RegularModeThink(pBot);
 			}

@@ -394,6 +394,7 @@ int UTIL_GetCostOfStructureType(NSStructureType StructureType);
 int UTIL_StructureTypeToImpulseCommand(const NSStructureType StructureType);
 
 bool UTIL_IsThereACommander();
+bool UTIL_IsThereACommanderOnTeam(int teamCompare);
 
 bool UTIL_IsAreaAffectedBySpores(const Vector Location);
 bool UTIL_IsAreaAffectedByUmbra(const Vector Location);

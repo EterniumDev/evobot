@@ -5028,6 +5028,19 @@ bool UTIL_IsThereACommander()
 	return false;
 }
 
+bool UTIL_IsThereACommanderOnTeam(int teamCOMPARE)
+{
+	for (int i = 0; i < 32; i++)
+	{
+		if (!FNullEnt(clients[i]) && IsPlayerCommander(clients[i]) && clients[i]->v.team == teamCOMPARE)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
 char* UTIL_BotRoleToChar(const BotRole Role)
 {
 	switch (Role)

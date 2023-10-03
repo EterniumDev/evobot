@@ -1900,7 +1900,7 @@ BotRole MarineGetBestBotRole(const bot_t* pBot)
 
 	// Take command if configured to and nobody is already commanding
 
-	if (!UTIL_IsThereACommander())
+	if (!UTIL_IsThereACommanderOnTeam(MARINE_TEAM))
 	{
 		CommanderMode BotCommanderMode = CONFIG_GetCommanderMode();
 

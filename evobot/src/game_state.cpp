@@ -943,6 +943,8 @@ const char* UTIL_GameModeToChar(const NSGameMode GameMode)
 	{
 		case GAME_MODE_REGULAR:
 			return "Regular";
+		case GAME_MODE_MVM:
+			return "Marine vs Marine";
 		case GAME_MODE_COMBAT:
 			return "Combat";
 		default:
@@ -968,6 +970,10 @@ void GAME_OnGameStart()
 			{
 				CurrentGameMode = GAME_MODE_REGULAR;
 			}
+			else if (!bHiveExists && bCommChairExists)
+			{
+				CurrentGameMode = GAME_MODE_MVM;
+			}
 		}
 		else if (!strncmp(theCStrLevelName, "co_", 3))
 		{
@@ -981,7 +987,7 @@ void GAME_OnGameStart()
 
 	if (!NavmeshLoaded()) { return; }
 
-	if (CurrentGameMode == GAME_MODE_REGULAR)
+	if (CurrentGameMode == GAME_MODE_REGULAR || CurrentGameMode == GAME_MODE_MVM)
 	{
 		UTIL_PopulateResourceNodeLocations();
 	}
