@@ -3402,7 +3402,12 @@ void COMM_SetNextBuildAction(bot_t* CommanderBot, commander_action* Action)
 
 	int NumInfantryPortals = UTIL_GetNumPlacedStructuresOfTypeInRadius(STRUCTURE_MARINE_INFANTRYPORTAL, CommChair->v.origin, UTIL_MetresToGoldSrcUnits(10.0f));
 
-	if (NumInfantryPortals < 2)
+	int NumMarines = GAME_GetNumPlayersOnTeam(MARINE_TEAM);
+
+	int PortalsNeeded = imaxi(PortalsNeeded, floorf(((float)NumMarines - 1.0f) / 2.0f));
+
+
+	if (NumInfantryPortals < PortalsNeeded)
 	{
 		COMM_SetInfantryPortalBuildAction(CommChair, Action);
 		return;
