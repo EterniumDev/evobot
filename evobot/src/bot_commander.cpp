@@ -3402,14 +3402,36 @@ void COMM_SetNextBuildAction(bot_t* CommanderBot, commander_action* Action)
 
 	int NumInfantryPortals = UTIL_GetNumPlacedStructuresOfTypeInRadius(STRUCTURE_MARINE_INFANTRYPORTAL, CommChair->v.origin, UTIL_MetresToGoldSrcUnits(10.0f));
 
+
+
 	int NumMarines = GAME_GetNumPlayersOnTeam(MARINE_TEAM);
 
 	int PortalsNeeded = imaxi(PortalsNeeded, floorf(((float)NumMarines - 1.0f) / 2.0f));
 
-
 	if (NumInfantryPortals < PortalsNeeded)
 	{
 		COMM_SetInfantryPortalBuildAction(CommChair, Action);
+		return;
+	}
+
+	const resource_node* CappableNode = COMM_GetResNodeCapOpportunityNearestLocation(UTIL_GetCommChairLocation());
+
+	if (CappableNode)
+	{
+		if (Action->ActionType != ACTION_DEPLOY || Action->ActionTarget != CappableNode->edict)
+		{
+			int NumMarineRTs = UTIL_GetNumPlacedStructuresOfType(STRUCTURE_MARINE_RESTOWER);
+
+			UTIL_ClearCommanderAction(Action);
+
+			Action->ActionType = ACTION_DEPLOY;
+			Action->ActionTarget = CappableNode->edict;
+			Action->StructureToBuild = STRUCTURE_MARINE_RESTOWER;
+			Action->BuildLocation = CappableNode->origin;
+			Action->bIsActionUrgent = (NumMarineRTs < 4);
+			Action->NumDesiredInstances = 1;
+		}
+
 		return;
 	}
 
@@ -3495,26 +3517,7 @@ void COMM_SetNextBuildAction(bot_t* CommanderBot, commander_action* Action)
 		}
 	}
 
-	const resource_node* CappableNode = COMM_GetResNodeCapOpportunityNearestLocation(UTIL_GetCommChairLocation());
-
-	if (CappableNode)
-	{
-		if (Action->ActionType != ACTION_DEPLOY || Action->ActionTarget != CappableNode->edict)
-		{
-			int NumMarineRTs = UTIL_GetNumPlacedStructuresOfType(STRUCTURE_MARINE_RESTOWER);
-
-			UTIL_ClearCommanderAction(Action);
-
-			Action->ActionType = ACTION_DEPLOY;
-			Action->ActionTarget = CappableNode->edict;
-			Action->StructureToBuild = STRUCTURE_MARINE_RESTOWER;
-			Action->BuildLocation = CappableNode->origin;
-			Action->bIsActionUrgent = (NumMarineRTs < 4);
-			Action->NumDesiredInstances = 1;
-		}
-
-		return;
-	}
+	
 
 	const hive_definition* HiveToSecure = COMM_GetEmptyHiveOpportunityNearestLocation(CommanderBot, UTIL_GetCommChairLocation());
 
