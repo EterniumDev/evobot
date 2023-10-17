@@ -3281,7 +3281,7 @@ void COMM_SetNextSupportAction(bot_t* CommanderBot, commander_action* Action)
 		}
 	}
 
-	if (bShouldDropMines)
+	if (bShouldDropMines && CommanderBot->resources > 40)
 	{
 		if (Action->ActionType == ACTION_DEPLOY && Action->StructureToBuild == DEPLOYABLE_ITEM_MARINE_MINES) { return; }
 
@@ -3338,7 +3338,7 @@ void COMM_SetNextSupportAction(bot_t* CommanderBot, commander_action* Action)
 	}
 	else
 	{
-		int DesiredNumShotguns = (NumMarines / 2);
+		int DesiredNumShotguns = (CommanderBot->resources > 100) ? NumMarines : (NumMarines / 2);
 
 		int NumShotgunsInPlay = UTIL_GetNumWeaponsOfTypeInPlay(WEAPON_MARINE_SHOTGUN);
 
