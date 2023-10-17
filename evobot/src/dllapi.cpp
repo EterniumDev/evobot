@@ -249,6 +249,17 @@ void ClientCommand(edict_t* pEntity)
 			RETURN_META(MRES_IGNORED);
 		}
 
+		if (FStrEq(arg1, "resign"))
+		{
+			for (int i = 0; i < 32; i++)
+			{
+				if (bots[i].is_used && IsPlayerCommander(bots[i].pEdict))
+				{
+					FakeClientCommand(bots[i].pEdict, "stopcommandermode", NULL, NULL);
+					RETURN_META(MRES_IGNORED);
+				}
+			}
+
 			RETURN_META(MRES_IGNORED);
 		}
 
