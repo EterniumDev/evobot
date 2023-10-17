@@ -1948,11 +1948,14 @@ BotRole MarineGetBestBotRole(const bot_t* pBot)
 	
 	int NumDefenders = GAME_GetBotsWithRoleType(BOT_ROLE_SWEEPER, MARINE_TEAM, pBot->pEdict);
 
-	// One marine to play sweeper at all times
-	if (NumDefenders < 1)
+	int NumUnbuiltStructuresInBaseM = UTIL_GetNumUnbuiltStructuresOfTeamInArea(pBot->pEdict->v.team, UTIL_GetCommChairLocation(), UTIL_MetresToGoldSrcUnits(15.0f));
+
+	// One marine to play sweeper at all times, only keep a sweeper when theres unbuilt structures in base
+	if (NumDefenders < 1 && NumUnbuiltStructuresInBaseM > 0)
 	{
 		return BOT_ROLE_SWEEPER;
 	}
+
 
 	if (PlayerHasWeapon(pBot->pEdict, WEAPON_MARINE_GL))
 	{
