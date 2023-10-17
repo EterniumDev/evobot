@@ -3420,9 +3420,9 @@ void COMM_SetNextBuildAction(bot_t* CommanderBot, commander_action* Action)
 
 
 
-	int NumMarines = GAME_GetNumPlayersOnTeam(MARINE_TEAM);
+	int NumMarines = GAME_GetNumPlayersOnTeam(MARINE_TEAM) - 1;
 
-	int PortalsNeeded = imaxi(PortalsNeeded, floorf(((float)NumMarines - 1.0f) / 2.0f));
+	int PortalsNeeded = imaxi(2, (int)floorf(((float)NumMarines - 1.0f) / 2.0f));
 
 	if (NumInfantryPortals < PortalsNeeded)
 	{
