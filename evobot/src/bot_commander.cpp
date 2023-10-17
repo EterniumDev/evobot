@@ -403,7 +403,7 @@ void CommanderReceiveWeaponRequest(bot_t* pBot, edict_t* Requestor, NSStructureT
 		return;
 	}
 
-	edict_t* NearbyWeapon = UTIL_GetNearestItemIndexOfType(ItemToDrop, Requestor->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));
+	edict_t* NearbyWeapon = UTIL_GetNearestItemIndexOfType(ItemToDrop, Requestor->v.origin, UTIL_MetresToGoldSrcUnits(2.0f));
 
 	if (!FNullEnt(NearbyWeapon))
 	{
@@ -458,6 +458,22 @@ void CommanderReceiveWeaponRequest(bot_t* pBot, edict_t* Requestor, NSStructureT
 	pBot->SupportAction.ActionType = ACTION_DEPLOY;
 	pBot->SupportAction.StructureToBuild = ItemToDrop;
 	pBot->SupportAction.BuildLocation = UTIL_GetRandomPointOnNavmeshInRadius(MARINE_REGULAR_NAV_PROFILE, Armoury->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));
+	pBot->SupportAction.bIsActionUrgent = true;
+}
+
+void CommanderReceiveStructureRequest(bot_t* pBot, edict_t* Requestor, NSStructureType ItemToDrop)
+{
+	if (ItemToDrop == STRUCTURE_MARINE_PHASEGATE && !UTIL_ResearchIsComplete(RESEARCH_OBSERVATORY_PHASETECH))
+	{
+		char buf[512];
+		sprintf(buf, "We don't have phase tech yet, %s", STRING(Requestor->v.netname));
+		BotTeamSay(pBot, 2.0f, buf);
+		return;
+	}
+
+	pBot->SupportAction.ActionType = ACTION_DEPLOY;
+	pBot->SupportAction.StructureToBuild = ItemToDrop;
+	pBot->SupportAction.BuildLocation = UTIL_GetRandomPointOnNavmeshInRadius(MARINE_REGULAR_NAV_PROFILE, Requestor->v.origin, UTIL_MetresToGoldSrcUnits(3.0f));
 	pBot->SupportAction.bIsActionUrgent = true;
 }
 

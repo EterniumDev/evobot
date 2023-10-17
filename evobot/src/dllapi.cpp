@@ -181,6 +181,74 @@ void ClientCommand(edict_t* pEntity)
 
 		if (FStrEq(arg1, "pg") || FStrEq(arg1, "phase") || FStrEq(arg1, "gate") || FStrEq(arg1, "phasegate"))
 		{
+			for (int i = 0; i < 32; i++)
+			{
+				if (bots[i].is_used && IsPlayerCommander(bots[i].pEdict))
+				{
+					CommanderReceiveStructureRequest(&bots[i], pEntity, STRUCTURE_MARINE_PHASEGATE);
+					RETURN_META(MRES_IGNORED);
+				}
+			}
+
+			RETURN_META(MRES_IGNORED);
+		}
+
+		if (FStrEq(arg1, "armory") || FStrEq(arg1, "armoury"))
+		{
+			for (int i = 0; i < 32; i++)
+			{
+				if (bots[i].is_used && IsPlayerCommander(bots[i].pEdict))
+				{
+					CommanderReceiveStructureRequest(&bots[i], pEntity, STRUCTURE_MARINE_ARMOURY);
+					RETURN_META(MRES_IGNORED);
+				}
+			}
+
+			RETURN_META(MRES_IGNORED);
+		}
+
+		if (FStrEq(arg1, "tf"))
+		{
+			for (int i = 0; i < 32; i++)
+			{
+				if (bots[i].is_used && IsPlayerCommander(bots[i].pEdict))
+				{
+					CommanderReceiveStructureRequest(&bots[i], pEntity, STRUCTURE_MARINE_TURRETFACTORY);
+					RETURN_META(MRES_IGNORED);
+				}
+			}
+
+			RETURN_META(MRES_IGNORED);
+		}
+
+		if (FStrEq(arg1, "turret") || FStrEq(arg1, "sentry"))
+		{
+			for (int i = 0; i < 32; i++)
+			{
+				if (bots[i].is_used && IsPlayerCommander(bots[i].pEdict))
+				{
+					CommanderReceiveStructureRequest(&bots[i], pEntity, STRUCTURE_MARINE_TURRET);
+					RETURN_META(MRES_IGNORED);
+				}
+			}
+
+			RETURN_META(MRES_IGNORED);
+		}
+
+		if (FStrEq(arg1, "cc") || FStrEq(arg1, "commandchair"))
+		{
+			for (int i = 0; i < 32; i++)
+			{
+				if (bots[i].is_used && IsPlayerCommander(bots[i].pEdict))
+				{
+					CommanderReceiveStructureRequest(&bots[i], pEntity, STRUCTURE_MARINE_COMMCHAIR);
+					RETURN_META(MRES_IGNORED);
+				}
+			}
+
+			RETURN_META(MRES_IGNORED);
+		}
+
 			RETURN_META(MRES_IGNORED);
 		}
 
