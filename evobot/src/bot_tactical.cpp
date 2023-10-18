@@ -4507,7 +4507,37 @@ bool UTIL_BaseIsInDistress()
 
 	int NumDefenders = UTIL_GetNumPlayersOfTeamInArea(UTIL_GetCommChairLocation(), UTIL_MetresToGoldSrcUnits(15.0f), MARINE_TEAM, nullptr, CLASS_NONE, true);
 
-	float MarinePower = (float)NumDefenders;
+	float MarinePower = 0.4f;
+	
+	if (UTIL_ResearchIsComplete(RESEARCH_ARMSLAB_WEAPONS3))
+	{
+		MarinePower += 0.3f;
+	}
+	else if (UTIL_ResearchIsComplete(RESEARCH_ARMSLAB_WEAPONS2))
+	{
+		MarinePower += 0.2f;
+	}
+	else if (UTIL_ResearchIsComplete(RESEARCH_ARMSLAB_WEAPONS1))
+	{
+		MarinePower += 0.1f;
+	}
+	if (UTIL_ResearchIsComplete(RESEARCH_ARMSLAB_ARMOUR3))
+	{
+		MarinePower += 0.3f;
+	}
+	else if (UTIL_ResearchIsComplete(RESEARCH_ARMSLAB_ARMOUR2))
+	{
+		MarinePower += 0.2f;
+	}
+	else if (UTIL_ResearchIsComplete(RESEARCH_ARMSLAB_ARMOUR1))
+	{
+		MarinePower += 0.1f;
+	}
+	
+
+	MarinePower = (float)NumDefenders * MarinePower;
+
+	//TODO: distress beaconc calculation for marine power should be more dynamic, for example base marines are 0.4, plus 0.1 per Armor or Weapon upgrade, plus 0.5 for having a shotgun or HMG, plus 0.5 for having Heavy armor
 
 	return (AlienPower > (MarinePower * 3.0f));
 
