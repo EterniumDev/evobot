@@ -471,10 +471,26 @@ void CommanderReceiveStructureRequest(bot_t* pBot, edict_t* Requestor, NSStructu
 		return;
 	}
 
+	/*
+	Action->ActionType = ACTION_DEPLOY;
+	Action->ActionTarget = Hive->edict;
+	Action->StructureToBuild = STRUCTURE_MARINE_PHASEGATE;
+	Action->BuildLocation = FinalBuildLocation;
+	Action->bIsActionUrgent = true;
+	Action->ActionPurpose = STRUCTURE_PURPOSE_SIEGE;
+	Action->NumDesiredInstances = 1;
+	*/
+
 	pBot->SupportAction.ActionType = ACTION_DEPLOY;
 	pBot->SupportAction.StructureToBuild = ItemToDrop;
 	pBot->SupportAction.BuildLocation = UTIL_GetRandomPointOnNavmeshInRadius(MARINE_REGULAR_NAV_PROFILE, Requestor->v.origin, UTIL_MetresToGoldSrcUnits(3.0f));
 	pBot->SupportAction.bIsActionUrgent = true;
+
+	//pBot->BuildAction.ActionType = ACTION_DEPLOY;
+	//pBot->BuildAction.StructureToBuild = ItemToDrop;
+	//pBot->BuildAction.BuildLocation = UTIL_GetRandomPointOnNavmeshInRadius(MARINE_REGULAR_NAV_PROFILE, Requestor->v.origin, UTIL_MetresToGoldSrcUnits(3.0f));
+	//pBot->BuildAction.bIsActionUrgent = true;
+	//pBot->BuildAction.NumDesiredInstances = 1;
 }
 
 void CommanderReceiveHealthRequest(bot_t* pBot, edict_t* Requestor)
