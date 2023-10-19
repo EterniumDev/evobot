@@ -459,6 +459,7 @@ void CommanderReceiveWeaponRequest(bot_t* pBot, edict_t* Requestor, NSStructureT
 	pBot->SupportAction.StructureToBuild = ItemToDrop;
 	pBot->SupportAction.BuildLocation = UTIL_GetRandomPointOnNavmeshInRadius(MARINE_REGULAR_NAV_PROFILE, Armoury->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));
 	pBot->SupportAction.bIsActionUrgent = true;
+	pBot->SupportAction.NumDesiredInstances = 1;
 }
 
 void CommanderReceiveStructureRequest(bot_t* pBot, edict_t* Requestor, NSStructureType ItemToDrop)
@@ -485,6 +486,7 @@ void CommanderReceiveStructureRequest(bot_t* pBot, edict_t* Requestor, NSStructu
 	pBot->SupportAction.StructureToBuild = ItemToDrop;
 	pBot->SupportAction.BuildLocation = UTIL_GetRandomPointOnNavmeshInRadius(MARINE_REGULAR_NAV_PROFILE, Requestor->v.origin, UTIL_MetresToGoldSrcUnits(3.0f));
 	pBot->SupportAction.bIsActionUrgent = true;
+	pBot->SupportAction.NumDesiredInstances = 1;
 
 	//pBot->BuildAction.ActionType = ACTION_DEPLOY;
 	//pBot->BuildAction.StructureToBuild = ItemToDrop;
@@ -497,7 +499,7 @@ void CommanderReceiveHealthRequest(bot_t* pBot, edict_t* Requestor)
 {
 	if (FNullEnt(Requestor) || !IsPlayerActiveInGame(Requestor) || Requestor->v.health >= 100.0f) { return; }
 
-	if (UTIL_StructureOfTypeExistsInLocation(STRUCTURE_MARINE_ANYARMOURY, Requestor->v.origin, UTIL_MetresToGoldSrcUnits(15.0f)))
+	if (UTIL_StructureOfTypeExistsInLocation(STRUCTURE_MARINE_ANYARMOURY, Requestor->v.origin, UTIL_MetresToGoldSrcUnits(5.0f), true) && Requestor->v.health >= 80.0f)
 	{
 		char buf[512];
 		sprintf(buf, "Can you use the armoury please, %s?", STRING(Requestor->v.netname));
@@ -561,7 +563,7 @@ void CommanderReceiveAmmoRequest(bot_t* pBot, edict_t* Requestor)
 {
 	if (FNullEnt(Requestor) || !IsPlayerActiveInGame(Requestor)) { return; }
 
-	if (UTIL_StructureOfTypeExistsInLocation(STRUCTURE_MARINE_ANYARMOURY, Requestor->v.origin, UTIL_MetresToGoldSrcUnits(15.0f)))
+	if (UTIL_StructureOfTypeExistsInLocation(STRUCTURE_MARINE_ANYARMOURY, Requestor->v.origin, UTIL_MetresToGoldSrcUnits(5.0f), true))
 	{
 		char buf[512];
 		sprintf(buf, "Can you use the armoury please, %s?", STRING(Requestor->v.netname));
@@ -1780,6 +1782,13 @@ void BotCommanderDeploy(bot_t* pBot, commander_action* Action)
 
 		return;
 	}
+
+	//if (Action->StructureToBuild == STRUCTURE_MARINE_TURRETFACTORY)
+	//{
+	//	char buf[512];
+	//	sprintf(buf, "Building structure type of %d", Action->StructureToBuild);
+	//	BotTeamSay(pBot, 2.0f, buf);
+	//}
 
 	Vector PickRay = UTIL_GetVectorNormal(Action->BuildLocation - CommanderViewOrigin);
 
