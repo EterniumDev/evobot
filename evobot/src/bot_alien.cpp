@@ -400,6 +400,8 @@ void AlienHarasserSetPrimaryTask(bot_t* pBot, bot_task* Task)
 		}
 	}
 
+	
+
 	// Taking out arms labs gimps marines, make that next priority
 	edict_t* Armslab = UTIL_GetFirstCompletedStructureOfType(STRUCTURE_MARINE_ARMSLAB);
 
@@ -414,9 +416,11 @@ void AlienHarasserSetPrimaryTask(bot_t* pBot, bot_task* Task)
 
 	if (Obs)
 	{
+		//vDist2DSq(Task->TaskLocation, Location) < sqrf(100.0f)
 		TASK_SetAttackTask(pBot, Task, Obs, false);
 		return;
 	}
+
 
 
 	int NumInfantryPortals = UTIL_GetStructureCountOfType(STRUCTURE_MARINE_INFANTRYPORTAL);
@@ -440,6 +444,7 @@ void AlienHarasserSetPrimaryTask(bot_t* pBot, bot_task* Task)
 		TASK_SetAttackTask(pBot, Task, CommChair, false);
 		return;
 	}
+	*/
 
 	edict_t* EnemyPlayer = UTIL_GetNearestPlayerOfTeamInArea(pBot->pEdict->v.origin, UTIL_MetresToGoldSrcUnits(500.0f), MARINE_TEAM, nullptr, CLASS_NONE);
 
@@ -448,7 +453,14 @@ void AlienHarasserSetPrimaryTask(bot_t* pBot, bot_task* Task)
 		TASK_SetAttackTask(pBot, Task, EnemyPlayer, true);
 		return;
 	}
-	*/
+
+	Vector NewMoveLocation = UTIL_GetRandomPointOfInterest();
+
+	if (NewMoveLocation != ZERO_VECTOR)
+	{
+		TASK_SetMoveTask(pBot, Task, NewMoveLocation, false);
+		return;
+	}
 }
 
 void AlienHarasserSetCombatModePrimaryTask(bot_t* pBot, bot_task* Task)
@@ -904,6 +916,13 @@ void AlienDestroyerSetPrimaryTask(bot_t* pBot, bot_task* Task)
 		}
 	}
 
+	Vector NewMoveLocation = UTIL_GetRandomPointOnNavmesh(pBot);;
+
+	if (NewMoveLocation != ZERO_VECTOR && Task->TaskType != TASK_MOVE && gpGlobals->time < 300.0f)
+	{
+		TASK_SetMoveTask(pBot, Task, NewMoveLocation, false);
+		return;
+	}
 
 	// Take out the observatory first to prevent beacon and phase gates
 	edict_t* Obs = UTIL_GetFirstCompletedStructureOfType(STRUCTURE_MARINE_OBSERVATORY);
@@ -944,7 +963,7 @@ void AlienDestroyerSetPrimaryTask(bot_t* pBot, bot_task* Task)
 	// Hunt down any last straggling marines once everything destroyed (assuming they don't just drop to the ready room and surrender)
 	edict_t* EnemyPlayer = UTIL_GetNearestPlayerOfTeamInArea(pBot->pEdict->v.origin, UTIL_MetresToGoldSrcUnits(500.0f), MARINE_TEAM, nullptr, CLASS_NONE);
 
-	if (!FNullEnt(EnemyPlayer))
+	if (!FNullEnt(EnemyPlayer) && vDist3D(UTIL_GetEntityGroundLocation(EnemyPlayer), pBot->pEdict->v.origin) < 30.0f)
 	{
 		TASK_SetAttackTask(pBot, Task, EnemyPlayer, false);
 		return;
