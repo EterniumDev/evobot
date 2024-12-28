@@ -325,6 +325,7 @@ void ParseConfigFile(bool bOverride)
 
             if (key.compare("MarineReactionTime") == 0)
             {
+
                 if (!isFloat(value.c_str()))
                 {
                     LOG_CONSOLE(PLID, "Invalid reaction time setting '%s' for skill level '%s', must be floating point value between 0.0 and 1.0\n", value.c_str(), CurrentSkillLevel.c_str());

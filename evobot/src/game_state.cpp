@@ -1040,7 +1040,7 @@ void EvoBot_ServerCommand(void)
 		return;
 	}
 
-	if (FStrEq(arg1, "botskill"))
+	if (FStrEq(arg1, "botskill") || FStrEq(arg1, "diff"))
 	{
 		const char* BotSkill = CMD_ARGV(2);
 
