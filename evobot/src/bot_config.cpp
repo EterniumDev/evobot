@@ -972,6 +972,11 @@ bot_skill CONFIG_GetGlobalBotSkillLevel()
     return BotSkillLevelsMap[GlobalSkillLevel.c_str()];
 }
 
+const char* GetGlobalBotSkillString()
+{
+	return GlobalSkillLevel.c_str();
+}
+
 void CONFIG_SetGlobalBotSkillLevel(const char* NewSkillLevel)
 {
     if (!CONFIG_BotSkillLevelExists(NewSkillLevel))

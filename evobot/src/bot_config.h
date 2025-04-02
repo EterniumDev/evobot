@@ -77,6 +77,8 @@ void CONFIG_SetCommanderMode(CommanderMode NewMode);
 // Returns the configured NS version (32 or 33). Used in bot_client.cpp to determine how to process certain network messages. Will cause crashes if incorrectly set.
 int CONFIG_GetNSVersion();
 
+const char* GetGlobalBotSkillString();
+
 // Populates the BotName input with a randomly-chosen name from the list (see evobot_names.txt)
 void CONFIG_GetBotName(char* BotName);
 

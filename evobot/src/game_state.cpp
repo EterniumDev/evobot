@@ -1040,19 +1040,19 @@ void EvoBot_ServerCommand(void)
 		return;
 	}
 
-	if (FStrEq(arg1, "botskill") || FStrEq(arg1, "diff"))
+	if (FStrEq(arg1, "botskill") || FStrEq(arg1, "diff") || FStrEq(arg1, "difficulty"))
 	{
 		const char* BotSkill = CMD_ARGV(2);
 
 		if (!BotSkill)
 		{
-			LOG_CONSOLE(PLID, "Please specify a bot skill. See evobot.cfg for valid skill level names\n");
+			LOG_CONSOLE(PLID, "Please specify a bot skill. See evobot.cfg for valid skill level names. Current skill:%s\n", GetGlobalBotSkillString());
 			return;
 		}
 
 		if (!CONFIG_BotSkillLevelExists(BotSkill))
 		{
-			LOG_CONSOLE(PLID, "Bot skill level '%s' does not exist. See evobot.cfg for valid skill level names\n", BotSkill);
+			LOG_CONSOLE(PLID, "Bot skill level '%s' does not exist. See evobot.cfg for valid skill level names. Current skill:%s\n", BotSkill, GetGlobalBotSkillString());
 			return;
 		}
 
